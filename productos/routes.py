@@ -11,14 +11,38 @@ async def crear_producto(
     producto: schemas.ProductoCreate, 
     db: AsyncSession = Depends(get_db)
 ):
-    # Consulta SQL directa (ajusta 'productos' al nombre exacto de tu tabla)
+    # Consulta SQL corregida con todos los parámetros
     result = await db.execute(
         sa.text("""
-        INSERT INTO productos (nombre, precio, stock) 
-        VALUES (:nombre, :precio, :stock) 
+        INSERT INTO productos (
+            nombre, 
+            descripcion, 
+            precio, 
+            stock, 
+            categoria_id, 
+            proveedor_id, 
+            usuario_id
+        ) 
+        VALUES (
+            :nombre, 
+            :descripcion, 
+            :precio, 
+            :stock, 
+            :categoria_id, 
+            :proveedor_id, 
+            :usuario_id
+        ) 
         RETURNING *
         """),
-        producto.dict()
+        {
+            "nombre": producto.nombre,
+            "descripcion": producto.descripcion or None,  # Convierte "" a NULL
+            "precio": producto.precio,
+            "stock": producto.stock,
+            "categoria_id": producto.categoria_id,
+            "proveedor_id": producto.proveedor_id,
+            "usuario_id": producto.usuario_id
+        }
     )
     await db.commit()
     return result.fetchone()
