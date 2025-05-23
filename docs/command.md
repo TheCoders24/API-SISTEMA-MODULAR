@@ -1,5 +1,30 @@
 # 📄 Documentación de Comandos Básicos para Proyecto FastAPI
 
+### Solution 1: Recreate the virtual environment
+1. Delete the existing virtual environment:
+   ```bash
+   rm -r .venv
+   ```
+   (Or manually delete the `.venv` folder in your project directory)
+
+2. Create a new virtual environment:
+   ```bash
+   python -m venv .venv
+   ```
+
+
+4. Then install FastAPI:
+   ```bash
+   pip install fastapi
+   ```
+
+### Solution 2: Use python -m pip directly
+If you don't want to recreate the virtual environment, try:
+```bash
+python -m pip install fastapi
+```
+
+
 ## 🔹 Activar el entorno virtual
 
 ```powershell
