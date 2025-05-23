@@ -1,12 +1,15 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
+import os
 
-# Formato: postgresql+asyncpg://usuario:contraseña@host:puerto/nombre_bd
-DATABASE_URL = "postgresql+asyncpg://postgres:12345@localhost:5432/inventario_db"
-
+DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_async_engine(DATABASE_URL)
-async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-async def get_db():
-    async with async_session() as session:
-        yield session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
