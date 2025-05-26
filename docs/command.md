@@ -24,13 +24,14 @@ If you don't want to recreate the virtual environment, try:
 python -m pip install fastapi
 ```
 
-
 ## 🔹 Activar el entorno virtual
 
 ```powershell
 .venv\Scripts\Activate.ps1
-```
 
+
+- pip install "fastapi[standard]"
+```
 Este comando activa el entorno virtual del proyecto en PowerShell. Al ejecutarlo correctamente, el prompt mostrará el nombre del entorno virtual al inicio, indicando que está activo.
 
 ## 🔹 Iniciar el servidor de desarrollo
