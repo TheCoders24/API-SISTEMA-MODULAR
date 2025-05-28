@@ -3,17 +3,23 @@ from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 import os
 
-# Creamos las Conexion a base de datos
-DATABASE_URL = "postgresql+asyncpg://postgres:12345@localhost:5432/sistemainventario"
+# Carga de variables de entorno si las usas
+# load_dotenv()
 
+DATABASE_URL = "postgresql+asyncpg://postgres:12345@localhost:5432/sistemainventario"
 # DATABASE_URL = os.getenv("DATABASE_URL")
 
-engine = create_async_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Crear el motor asíncrono
+engine = create_async_engine(DATABASE_URL, echo=True)
 
+# Crear sesión asíncrona
+AsyncSessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
+
+# Dependency para FastAPI
 async def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    async with AsyncSessionLocal() as session:
+        yield session  # Se cierra automáticamente al salir del contexto
