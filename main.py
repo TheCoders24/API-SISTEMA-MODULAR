@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from .productos.routes import router as productos_router
+from .Login.routes import router as login_router
 from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 # from proveedores.routes import router as proveedores_router
@@ -10,6 +11,7 @@ app = FastAPI()
 
 # Incluye los routers de cada módulo
 app.include_router(productos_router)
+app.include_router(login_router)
 # app.include_router(proveedores_router)
 
 @app.get("/")

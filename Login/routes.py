@@ -3,8 +3,8 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
 from typing import Annotated
+from ..database.session import get_db
 
-from ..database import get_db
 from .schemas import (
     UsuarioCreate,
     UsuarioResponse,
@@ -20,7 +20,8 @@ from .auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 
-router = APIRouter(prefix="/api/v1", tags=["auth"])
+#router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 # Helper functions
 async def get_user_by_email(db: AsyncSession, email: str):
