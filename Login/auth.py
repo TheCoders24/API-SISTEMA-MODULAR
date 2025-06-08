@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 import sqlalchemy as sa
-from ..database import get_db
+from ..database.session import get_db
 from .schemas import TokenData
 import os
 from dotenv import load_dotenv
@@ -15,9 +15,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuración desde variables de entorno
-SECRET_KEY = os.getenv("SECRET_KEY", "clave_secreta_por_defecto_solo_para_desarrollo")
+SECRET_KEY = os.getenv("SECRET_KEY", "asdasdasdasdsadsadasdsasdasda")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "300"))
 
 # Configuración de seguridad
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
