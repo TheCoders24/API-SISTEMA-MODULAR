@@ -1,2 +1,7 @@
 fastapi[standard]==0.113.0
 pydantic==2.8.0
+
+# librerias a instalar para que el proyecto funcione correctamente
+- pip install sqlalchemy asyncpg
+- pip install python-jose[cryptography]
+- pip install passlib
