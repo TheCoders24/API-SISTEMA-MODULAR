@@ -3,12 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.engine import Row
 import sqlalchemy as sa
-from ..database.session import get_db
-from . import schemas
-from ..database.UnitofWork import UnitOfWork
-from . import schemas
-from .service import ProductService
-from .repositories import ProductRepository
+from ...database.session import get_db
+from ...productos.presentation import schemas
+from ...database.UnitofWork import UnitOfWork
+from ..application.service import ProductService
+from ..infrastructure.repositories import ProductRepository
 
 router = APIRouter(prefix="/productos", tags=["productos"])
 

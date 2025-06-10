@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .productos.routes import router as productos_router
+from .productos.presentation.routes import router as productos_router
 from .Login.routes import router as login_router
 from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession

@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from . import schemas
+from ..presentation import schemas
 
 class ProductService:
     def __init__(self, repository):
