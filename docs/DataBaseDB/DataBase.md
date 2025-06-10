@@ -1,4 +1,4 @@
--- Tablas base sin dependencias
+**-- Tablas base sin dependencias
 CREATE TABLE Roles (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(20) NOT NULL UNIQUE
@@ -282,4 +282,4 @@ VALUES
     ('MONEDA', 'USD', 'Moneda predeterminada del sistema');
 
 COMMENT ON TABLE Usuarios IS 'Tabla que almacena la información de los usuarios del sistema.';
-COMMENT ON COLUMN Usuarios.password IS 'Contraseña encriptada del usuario.';
+COMMENT ON COLUMN Usuarios.password IS 'Contraseña encriptada del usuario.';**

@@ -16,8 +16,8 @@ class ProductRepository:
     async def create(self, data: dict):
         result = await self.db.execute(
             sa.text("""
-                INSERT INTO productos (nombre, descripcion, precio, stock, categoria_id, proveedor_id, usuario_id)
-                VALUES (:nombre, :descripcion, :precio, :stock, :categoria_id, :proveedor_id, :usuario_id)
+                INSERT INTO productos (nombre, descripcion, precio, stock, categoria_id, proveedor_id)
+                VALUES (:nombre, :descripcion, :precio, :stock, :categoria_id, :proveedor_id)
                 RETURNING *
             """),
             data

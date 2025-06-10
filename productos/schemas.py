@@ -8,7 +8,6 @@ class ProductoBase(BaseModel):
     stock: int = Field(..., ge=0)
     categoria_id: int
     proveedor_id: int
-    usuario_id: int
 
 class ProductoCreate(ProductoBase):
     pass
