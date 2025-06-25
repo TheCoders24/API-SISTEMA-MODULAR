@@ -5,3 +5,4 @@ pydantic==2.8.0
 - pip install sqlalchemy asyncpg
 - pip install python-jose[cryptography]
 - pip install passlib
+- python -m pip install "pymongo[srv]"
