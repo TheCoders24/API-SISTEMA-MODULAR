@@ -1,19 +1,20 @@
-from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure
+from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-MONGO_URL = os.getenv("MONGO_URI_APIKEYS")
-MONGO_DB = os.getenv("MONGODB_URL_DATABASE")
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+MONGO_DB = os.getenv("MONGO_DB", "sessionDB")
 
-try:
-    mongo_client = MongoClient(MONGO_URL)
-    mongo_db = mongo_client[MONGO_DB]
-    # Verificamos la Conexion de MongoDB
-    mongo_client.admin.command('ping')
-    print("Conexion a MongoDB Establecida para API Keys")
-except ConnectionFailure as e:
-    print(f"Error de Conexion a MongoDB: {e}")
-    raise
+client = AsyncIOMotorClient(MONGO_URL)
+mongo_db = client[MONGO_DB]
+
+# Para verificar conexión (async):
+async def check_mongo_connection():
+    try:
+        await client.admin.command("ping")
+        print("Conexion a MongoDB establecida para API Keys (async)")
+    except Exception as e:
+        print(f"Error en conexion async a MongoDB: {e}")
+        raise

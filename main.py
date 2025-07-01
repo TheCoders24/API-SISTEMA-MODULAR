@@ -6,13 +6,16 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 # from proveedores.routes import router as proveedores_router
 from .database.base import Base
 from .database.session import engine
-from .Api_Keys_Session.models.api_key_models import create_api_key, validate_api_key
+#from Api_Keys_Session.models.api_key_models import create_api_key, validate_api_key
+from .Api_Keys_Session.models.api_key_models import create_key, validate_key
 from .Api_Keys_Session.schemas.api_keys_schemas import APIkeyCreate, APIkeyResponse, APIkeyInfo
 from fastapi.security import APIKeyHeader
-from database.session import DATABASE_URL
+#from .database.session import DATABASE_URL
+from .database.session import DATABASE_URL
 from sqlalchemy.orm import Session
 
 app = FastAPI()
+
 
 # Incluye los routers de cada módulo
 app.include_router(productos_router)

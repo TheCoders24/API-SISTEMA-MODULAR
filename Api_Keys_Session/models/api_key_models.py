@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from database.Mongodb_Connection import mongo_db
+from ...database.Mongodb_Connection import mongo_db
 from bson.objectid import ObjectId
 import hashlib
 import secrets
@@ -11,7 +11,7 @@ class APIKey:
     def generate_key(self):
         return secrets.token_urlsafe(32)
     
-    def hash_key(self, key:str): 
+    def hash_key(self, key: str): 
         return hashlib.sha256(key.encode()).hexdigest()
     
     async def create_key(self, user_id: str, permissions: list = None, expires_in_days: int = 30):
@@ -27,15 +27,25 @@ class APIKey:
             "is_active": True
         }
         
-        result = self.collection.insert_one(key_data)
+        result = await self.collection.insert_one(key_data)
         return {"key_id": str(result.inserted_id), "raw_key": raw_key}
     
     async def validate_key(self, key: str):
         hashed_key = self.hash_key(key)
-        key_data = self.collection.find_one({
+        key_data = await self.collection.find_one({
             "hashed_key": hashed_key,
             "is_active": True,
             "expires_at": {"$gt": datetime.utcnow()}
         })
         
         return key_data
+
+# Fuera de la clase, instancia única para reusar
+api_key_manager = APIKey()
+
+# Wrappers para importar funciones directas
+async def create_key(user_id: str, permissions: list = None, expires_in_days: int = 30):
+    return await api_key_manager.create_key(user_id, permissions, expires_in_days)
+
+async def validate_key(key: str):
+    return await api_key_manager.validate_key(key)
