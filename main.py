@@ -16,7 +16,6 @@ from sqlalchemy.orm import Session
 
 app = FastAPI()
 
-
 # Incluye los routers de cada módulo
 app.include_router(productos_router)
 app.include_router(login_router)
