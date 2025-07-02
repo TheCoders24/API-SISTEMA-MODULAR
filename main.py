@@ -32,10 +32,8 @@ async def get_current_user(api_key: str = Depends(api_key_header), db: AsyncSess
             status_code= status.HTTP_401_UNAUTHORIZED,
             detail="API Key inválida o expirada"
         )
-    
     # Aquí puedes verificar el usuario en PostgreSQL si es necesario
     # user = db.query(User).filter(User.id == key_info.user_id).first()
-    
     return {"user_id": key_info.user_id, "permissions": key_info.permissions}
 
 @app.post("/api-keys/", response_model= APIkeyInfo)
