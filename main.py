@@ -48,7 +48,6 @@ async def protected_route(current_user: dict = Depends(get_current_user)):
         "permissions": current_user["permissions"]
     }
 
-
 @app.get("/")
 async def root():
     return {"message": "Sistema de Inventario con PostgreSQL"}
