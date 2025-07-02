@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+from ..Api_Keys_Session.services.api_key_service import create_api_key
+from ..Api_Keys_Session.schemas.api_keys_schemas import APIkeyCreate, APIkeyResponse
 from datetime import timedelta
 from typing import Annotated
 from ..database.session import get_db
@@ -32,7 +34,7 @@ async def get_user_by_email(db: AsyncSession, email: str):
     return result.scalar_one_or_none()
 
 # Routes
-@router.post("/register", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model= UsuarioResponseWithAPIKey, status_code=status.HTTP_201_CREATED)
 async def register_user(
     user_data: UsuarioCreate,
     db: AsyncSession = Depends(get_db)
@@ -64,7 +66,15 @@ async def register_user(
     new_user = result.fetchone()
     await db.commit()
     
-    return new_user
+    # Crear API Key para el usuario nuevo
+    api_key_data = APIkeyCreate(user_id=str(new_user.id))
+    api_key_response: APIkeyResponse = await create_api_key(api_key_data)
+    
+    # Agregar la api_key al response
+    return {
+        **new_user._mapping,  # para convertir el resultado en dict
+        "api_key": api_key_response.raw_key
+    }
 
 @router.post("/login", response_model=Token)
 async def login_for_access_token(
