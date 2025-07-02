@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi import Depends, HTTPException, status
 from .productos.presentation.routes import router as productos_router
 from .Login.routes import router as login_router
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -12,6 +13,7 @@ from .Api_Keys_Session.schemas.api_keys_schemas import APIkeyCreate, APIkeyRespo
 from fastapi.security import APIKeyHeader
 #from .database.session import DATABASE_URL
 from .database.session import DATABASE_URL
+from .database.session import get_db
 from sqlalchemy.orm import Session
 
 app = FastAPI()
@@ -23,7 +25,7 @@ app.include_router(login_router)
 
 api_key_header = APIKeyHeader(name="X-API-Key")
 
-async def get_current_user(api_key: str = Depends(api_key_header), db: Session = Depends(DATABASE_URL)):
+async def get_current_user(api_key: str = Depends(api_key_header), db: AsyncSession = Depends(get_db)):
     key_info = await validate_api_key(api_key)
     if not key_info:
         raise HTTPException(
