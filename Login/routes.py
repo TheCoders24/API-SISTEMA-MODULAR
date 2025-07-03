@@ -7,6 +7,9 @@ from datetime import timedelta
 from typing import Annotated
 from ..database.session import get_db
 
+from .schemas import UsuarioResponseWithAPIKey
+
+
 from .schemas import (
     UsuarioCreate,
     UsuarioResponse,

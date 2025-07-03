@@ -1,5 +1,6 @@
-from api_key_service import APIKey
-from schemas.api_keys_schemas import APIkeyCreate, APIkeyResponse, APIkeyInfo
+# from api_key_service import APIKey
+from ..models.api_key_models import APIKey
+from ..schemas.api_keys_schemas import APIkeyCreate, APIkeyResponse, APIkeyInfo
 
 api_key_manager = APIKey()
 
