@@ -6,3 +6,4 @@ pydantic==2.8.0
 - pip install python-jose[cryptography]
 - pip install passlib
 - python -m pip install "pymongo[srv]"
+- pip install bcrypt

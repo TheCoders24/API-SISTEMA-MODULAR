@@ -10,6 +10,7 @@ from ..database.session import get_db
 from .schemas import TokenData
 import os
 from dotenv import load_dotenv
+import traceback
 
 # Cargar variables de entorno
 load_dotenv()
@@ -22,6 +23,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "300"
 # Configuración de seguridad
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+# Configuración del hash de contraseña con bcrypt
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifica si una contraseña coincide con su hash almacenado"""
@@ -36,38 +39,37 @@ async def authenticate_user(
     email: str,
     password: str
 ) -> Optional[dict]:
-    """
-    Autentica un usuario con email y contraseña
-    
-    Args:
-        db: Sesión de base de datos
-        email: Email del usuario
-        password: Contraseña en texto plano
-    
-    Returns:
-        dict: Datos del usuario si la autenticación es exitosa
-        None: Si la autenticación falla
-    """
     try:
         result = await db.execute(
             sa.text("""
-            SELECT id, nombre, email, password, is_active 
-            FROM usuarios 
-            WHERE email = :email
+                SELECT email, password
+                FROM usuarios
+                WHERE email = :email
             """),
             {"email": email.lower().strip()}
         )
         user = result.mappings().first()
-        
-        if not user or not verify_password(password, user["password"]):
+
+        if not user:
             return None
-            
+
+        hashed_password = user.get("password")
+        if not hashed_password:
+            return None
+        
+        if not verify_password(password, hashed_password):
+            return None
+
         return dict(user)
+
     except Exception as e:
+        print("Error en authenticate_user:", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error en la autenticación"
         )
+
+
 
 def create_access_token(
     data: dict,
