@@ -36,3 +36,12 @@ class ProductService:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al obtener listado de productos: {str(e)}"
         )
+
+    async def get_product_nom(self, nombre: str):
+        product = await self.repository.get_by_nombre(nombre)
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Producto no encontrado"
+            )
+        return product               

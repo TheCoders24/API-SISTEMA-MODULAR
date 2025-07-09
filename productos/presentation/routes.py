@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Any, Dict, Optional, Set, Union
+from unittest.mock import Base
+from fastapi import APIRouter, Depends, HTTPException, Path, logger, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.engine import Row
@@ -30,6 +32,7 @@ async def listar_productos(
     return await service.get_all_products()
 
 # Crear producto
+"""
 @router.post("/CrearProductos", response_model=schemas.Producto, status_code=status.HTTP_201_CREATED)
 async def crear_producto(
     producto: schemas.ProductoCreate,
@@ -48,6 +51,26 @@ async def crear_producto(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error al crear producto: {str(e)}"
             )
+"""
+
+@router.post("/CrearProductos", response_model=schemas.Producto, status_code=status.HTTP_201_CREATED)
+async def crear_producto(
+    producto: schemas.ProductoCreate,
+    service: ProductService = Depends(get_product_service),
+    db: AsyncSession = Depends(get_db)
+):
+    uow = UnitOfWork(db)
+    try:
+        async with uow.transaction():
+            new_product = await service.create_product(producto)
+            return row_to_dict(new_product)
+    except Exception as e:
+        print("Error al crear producto:", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al crear producto: {str(e)}"
+        )
+
 
 # Obtener producto
 @router.get("/{producto_id}", response_model=schemas.Producto)
@@ -66,3 +89,84 @@ async def obtener_producto(
             detail=f"Error al consultar producto: {str(e)}"
         )
 
+
+@router.get(
+    "/producto/{nombre_producto}",
+    response_model=schemas.Producto,
+    responses={
+        200: {"description": "Producto encontrado exitosamente"},
+        404: {"description": "Producto no encontrado"},
+        500: {"description": "Error interno del servidor"}
+    },
+    summary="Obtener producto por nombre",
+    description="Recupera un producto específico por su nombre exacto"
+)
+async def obtener_producto_por_nombre(
+    nombre_producto: str = Path(..., description="Nombre exacto del producto a buscar"),
+    servicio: ProductService = Depends(get_product_service)
+) -> schemas.Producto:
+    """
+    Obtiene un producto por su nombre exacto.
+    
+    Parámetros:
+        nombre_producto: Nombre exacto del producto a recuperar
+        servicio: Servicio de Productos inyectado
+        
+    Retorna:
+        esquemas.Producto: El producto solicitado
+        
+    Excepciones:
+        HTTPException: 404 si el producto no existe, 500 para errores del servidor
+    """
+    try:
+        producto = await servicio.get_product_nombre(nombre_producto)
+        if not producto:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No se encontró el producto con nombre '{nombre_producto}'"
+            )
+        return fila_a_diccionario(producto)
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error al obtener producto '{nombre_producto}': {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al recuperar el producto"
+        )
+
+def fila_a_diccionario(
+    fila: Union[Row, Base], 
+    exclude: Optional[Set[str]] = None
+) -> Dict[str, Any]:
+    """
+    Convierte una fila de base de datos (SQLAlchemy) a diccionario.
+    
+    Args:
+        fila: Objeto SQLAlchemy o Row a convertir
+        exclude: Campos a excluir (opcional)
+        
+    Returns:
+        Diccionario con los datos de la fila
+        
+    Raises:
+        ValueError: Si el objeto no es convertible
+    """
+    try:
+        if hasattr(fila, "__table__"):  # Es un modelo SQLAlchemy
+            return {c.name: getattr(fila, c.name) 
+                   for c in fila.__table__.columns
+                   if exclude is None or c.name not in exclude}
+        
+        elif isinstance(fila, Row):  # Es un Row de SQLAlchemy
+            return dict(fila._mapping)
+            
+        elif isinstance(fila, dict):  # Ya es un diccionario
+            return {k: v for k, v in fila.items() 
+                   if exclude is None or k not in exclude}
+            
+        raise ValueError("Tipo de objeto no soportado para conversión")
+        
+    except Exception as e:
+        logger.error(f"Error convirtiendo fila a diccionario: {str(e)}")
+        raise ValueError(f"No se pudo convertir el objeto: {str(e)}")

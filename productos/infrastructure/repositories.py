@@ -31,6 +31,14 @@ class ProductRepository:
         )
         return result.fetchone()
     
+
+    async def get_by_nombre(self, nombre: str):
+        result = await self.db.execute(
+            sa.text("SELECT * FROM productos WHERE nombre = :nombre"),
+            {"nombre": nombre}
+        )
+        return result.fetchone()
+
     async def obtener_todos_productos(self) -> list[dict]:
         """Obtiene todos los productos disponibles"""
         try:

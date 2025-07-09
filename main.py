@@ -15,6 +15,7 @@ from fastapi.security import APIKeyHeader
 from .database.session import DATABASE_URL
 from .database.session import get_db
 from sqlalchemy.orm import Session
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
@@ -22,6 +23,13 @@ app = FastAPI()
 app.include_router(productos_router)
 app.include_router(login_router)
 # app.include_router(proveedores_router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Cambia por el puerto donde corre tu frontend
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 api_key_header = APIKeyHeader(name="X-API-Key")
 
