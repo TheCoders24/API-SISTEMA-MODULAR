@@ -16,12 +16,17 @@ from .database.session import DATABASE_URL
 from .database.session import get_db
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
+# importamos la parte o el endpoint de categoria routers
+# from .categoria.presentation.categoria_router import categoria_router
 
 app = FastAPI()
 
 # Incluye los routers de cada módulo
 app.include_router(productos_router)
 app.include_router(login_router)
+# app.include_router(categoria_router)
+
+
 # app.include_router(proveedores_router)
 app.add_middleware(
     CORSMiddleware,
