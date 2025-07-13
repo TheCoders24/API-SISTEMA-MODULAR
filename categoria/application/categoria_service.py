@@ -1,4 +1,4 @@
-from ..presentation.categoria_repository import CategoriaRepository
+from ..infraestructura.categoria_repository import CategoriaRepository
 
 class CategoriaService:
     def __init__(self, categoria_repository: CategoriaRepository):
