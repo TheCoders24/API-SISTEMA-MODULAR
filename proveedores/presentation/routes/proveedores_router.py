@@ -2,7 +2,6 @@ from os import stat
 from fastapi import APIRouter, Depends, HTTPException, Path, logger, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 # import 
 from ...application.proveedores_service import ProveedoresService
 from ...application.proveedores_service import PorveedoresRepository
@@ -12,7 +11,7 @@ from pydantic import BaseModel
 
 proveedores_router = APIRouter(prefix="/proveedores", tags=["proveedores"])
 
-
+# schemas
 class ProveedoresBase(BaseModel):
     nombre: str
 
