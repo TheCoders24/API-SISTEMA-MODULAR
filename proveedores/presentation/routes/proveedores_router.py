@@ -9,6 +9,7 @@ from ....database.session import get_db
 from typing import List
 from pydantic import BaseModel
 
+#rutas en la url
 proveedores_router = APIRouter(prefix="/proveedores", tags=["proveedores"])
 
 # schemas
