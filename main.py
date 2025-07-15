@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 # importamos la parte o el endpoint de categoria routers
 from .categoria.presentation.routes.categoria_router import categoria_router
-
+from .proveedores.presentation.routes.proveedores_router import proveedores_router
 
 app = FastAPI()
 
@@ -26,6 +26,7 @@ app = FastAPI()
 app.include_router(productos_router)
 app.include_router(login_router)
 app.include_router(categoria_router)
+app.include_router(proveedores_router)
 
 
 # app.include_router(proveedores_router)

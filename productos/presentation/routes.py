@@ -52,7 +52,7 @@ async def crear_producto(
                 detail=f"Error al crear producto: {str(e)}"
             )
 """
-
+#"""
 @router.post("/CrearProductos", response_model=schemas.Producto, status_code=status.HTTP_201_CREATED)
 async def crear_producto(
     producto: schemas.ProductoCreate,
@@ -70,7 +70,57 @@ async def crear_producto(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al crear producto: {str(e)}"
         )
-
+#"""
+"""
+@router.post(
+    "/CrearProductos",
+    response_model=schemas.Producto,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear un nuevo producto",
+    responses={
+        404: {"description": "Categoría o proveedor no encontrado"},
+        500: {"description": "Error interno del servidor"}
+    }
+)
+async def crear_producto(
+    producto: schemas.ProductoCreate,
+    service: ProductService = Depends(get_product_service),
+    db: AsyncSession = Depends(get_db)
+):
+    uow = UnitOfWork(db)
+    try:
+        # Verificar existencia de categoría y proveedor
+        async with uow.transaction():
+            # Verificar categoría
+            categoria = await uow.repository.get_by_id(categoria, producto.categoria_id)
+            if not categoria:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Categoría con ID {producto.categoria_id} no existe"
+                )
+            
+            # Verificar proveedor
+            proveedor = await uow.repository.get_by_id(proveedor, producto.proveedor_id)
+            if not proveedor:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Proveedor con ID {producto.proveedor_id} no existe"
+                )
+            
+            # Crear producto si las relaciones existen
+            new_product = await service.create_product(producto)
+            return row_to_dict(new_product)
+            
+    except HTTPException:
+        raise  # Re-lanza las excepciones HTTP que ya hemos capturado
+    except Exception as e:
+        await uow.rollback()
+        logger.error(f"Error al crear producto: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al crear producto: {str(e)}"
+        )
+"""
 
 # Obtener producto
 @router.get("/{producto_id}", response_model=schemas.Producto)

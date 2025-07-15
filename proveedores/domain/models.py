@@ -6,3 +6,4 @@ class Proveedores(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String, unique=True, nullable=False)
+    
