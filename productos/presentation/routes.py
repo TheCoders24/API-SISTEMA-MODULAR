@@ -220,3 +220,62 @@ def fila_a_diccionario(
     except Exception as e:
         logger.error(f"Error convirtiendo fila a diccionario: {str(e)}")
         raise ValueError(f"No se pudo convertir el objeto: {str(e)}")
+    
+@router.delete(
+    "/{producto_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar un producto por ID",
+    responses={
+        204: {"description": "Producto eliminado exitosamente"},
+        404: {"description": "Producto no encontrado"},
+        422: {"description": "ID de producto inválido"},
+        500: {"description": "Error interno del servidor"}
+    }
+)
+async def eliminar_producto(
+    producto_id: int = Path(..., gt=0, description="ID del producto a eliminar"),
+    db: AsyncSession = Depends(get_db),
+    service: ProductService = Depends(get_product_service)
+) -> None:
+    """
+    Elimina un producto existente por su ID.
+    
+    Realiza una eliminación permanente del producto después de verificar su existencia.
+    """
+    uow = UnitOfWork(db)
+    try:
+        async with uow.transaction():
+            # Verificar existencia del producto
+            producto = await service.get_product_by_id(producto_id)
+            if not producto:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Producto con ID {producto_id} no encontrado"
+                )
+            
+            # Eliminar el producto
+            await service.delete_product(producto_id)
+            
+            # No es necesario return, FastAPI maneja el 204 automáticamente
+            
+    except HTTPException:
+        # Re-lanzar excepciones HTTP que ya manejamos
+        raise
+    except ValueError as e:
+        # Errores de validación de datos
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+    except Exception as e:
+        # Manejo de errores inesperados
+        logger.error(
+            "Error al eliminar producto ID %d: %s",
+            producto_id,
+            str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ocurrió un error al procesar la solicitud"
+        )

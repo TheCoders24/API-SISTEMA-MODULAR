@@ -47,3 +47,7 @@ class ProductRepository:
             return [dict(row._mapping) for row in rows]
         except Exception as e:
             raise  Exception(f"Error al  Obtener Productos", {str(e)})
+        
+    async def delete(self, entity):
+        await self.session.delete(entity)
+        await self.session.commit()
