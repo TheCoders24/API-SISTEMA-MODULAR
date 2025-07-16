@@ -10,6 +10,11 @@ from ...productos.presentation import schemas
 from ...database.UnitofWork import UnitOfWork
 from ..application.service import ProductService
 from ..infrastructure.repositories import ProductRepository
+import logging
+from fastapi.logger import logger as fastapi_logger
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 router = APIRouter(prefix="/productos", tags=["productos"])
 
@@ -221,61 +226,31 @@ def fila_a_diccionario(
         logger.error(f"Error convirtiendo fila a diccionario: {str(e)}")
         raise ValueError(f"No se pudo convertir el objeto: {str(e)}")
     
-@router.delete(
-    "/{producto_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Eliminar un producto por ID",
-    responses={
-        204: {"description": "Producto eliminado exitosamente"},
-        404: {"description": "Producto no encontrado"},
-        422: {"description": "ID de producto inválido"},
-        500: {"description": "Error interno del servidor"}
-    }
-)
-async def eliminar_producto(
-    producto_id: int = Path(..., gt=0, description="ID del producto a eliminar"),
-    db: AsyncSession = Depends(get_db),
-    service: ProductService = Depends(get_product_service)
-) -> None:
-    """
-    Elimina un producto existente por su ID.
+
     
-    Realiza una eliminación permanente del producto después de verificar su existencia.
-    """
-    uow = UnitOfWork(db)
+# Endpoint del methodo eliminar productos
+@router.delete("/{producto_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def eliminar_producto(
+    producto_id: int = Path(..., gt=0),
+    service: ProductService = Depends(get_product_service),
+    db: AsyncSession = Depends(get_db)
+):
     try:
-        async with uow.transaction():
-            # Verificar existencia del producto
-            producto = await service.get_product_by_id(producto_id)
-            if not producto:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Producto con ID {producto_id} no encontrado"
-                )
-            
-            # Eliminar el producto
-            await service.delete_product(producto_id)
-            
-            # No es necesario return, FastAPI maneja el 204 automáticamente
-            
-    except HTTPException:
-        # Re-lanzar excepciones HTTP que ya manejamos
-        raise
-    except ValueError as e:
-        # Errores de validación de datos
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e)
-        )
+        # Primero verificar existencia
+        product = await service.get_product_by_id(producto_id)
+        
+        # Luego eliminar
+        deleted = await service.delete_product(producto_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No se pudo eliminar el producto"
+            )
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        # Manejo de errores inesperados
-        logger.error(
-            "Error al eliminar producto ID %d: %s",
-            producto_id,
-            str(e),
-            exc_info=True
-        )
+        logger.error(f"Error eliminando producto: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Ocurrió un error al procesar la solicitud"
+            detail="Error al eliminar producto"
         )

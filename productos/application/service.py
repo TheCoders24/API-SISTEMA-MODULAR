@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import HTTPException, status
 from ..presentation import schemas
 
@@ -46,14 +47,29 @@ class ProductService:
             )
         return product          
 
-    async def get_product_by_id(self, product_id: int):
-        return await self.repository.get_by_id(schemas.Producto, product_id)
-
-    async def delete_product(self, product_id: int):
+    async def get_product_by_id(self, product_id: int) -> Optional[schemas.Producto]:
+        """Obtiene un producto por ID con validación"""
+        # Validación del ID
+        if product_id <= 0:
+            raise ValueError("ID de producto inválido")
+        
+        # Obtener el producto del repositorio
+        producto = await self.repository.get_by_id(product_id)  # Fixed variable name
+        
+        # Verificar si el producto existe
+        if not producto:  # Check the product object, not the ID
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Producto no encontrado"
+            )
+    
+        return producto  # Return the product object, not the ID
+    
+    async def delete_product(self, product_id: int) -> bool:
         """Elimina un producto por ID"""
         product = await self.get_product_by_id(product_id)
         if not product:
             return False
         
-        await self.repository.delete(product)
+        await self.repository.delete(product)  # Pasamos el objeto Producto, no el ID
         return True
