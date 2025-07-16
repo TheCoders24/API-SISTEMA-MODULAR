@@ -26,7 +26,7 @@ class CategoriaOut(CategoriaBase):
     class Config:
         from_attributes = True  # Pydantic v2 (antes orm_mode)
 
-# Endpoints
+# Endpoints de Obtener o listar_todas_categorias
 @categoria_router.get("/", response_model=List[CategoriaOut])
 async def listar_todas_categorias(
     session: AsyncSession = Depends(get_db),
@@ -35,8 +35,10 @@ async def listar_todas_categorias(
 ):
     repo = CategoriaRepository(session)
     service = CategoriaService(repo)
-    return await service.obtener_todas_categorias(skip=skip, limit=limit)
+    return await service.obtener_todas_categorias()
 
+
+# endpoint de obtener_categoria por el categoria_id
 @categoria_router.get("/{categoria_id}", response_model=CategoriaOut)
 async def obtener_categoria(
     categoria_id: int,
@@ -52,6 +54,7 @@ async def obtener_categoria(
         )
     return categoria
 
+# endpoint de crear las categorias
 @categoria_router.post("/", response_model=CategoriaOut, status_code=status.HTTP_201_CREATED)
 async def crear_categoria(
     categoria: CategoriaCreate,

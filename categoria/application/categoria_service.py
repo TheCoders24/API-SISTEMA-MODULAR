@@ -9,7 +9,7 @@ class CategoriaService:
         return await self.categoria_repository.listar_categorias()
     
     async def obtener_todas_categorias(self):
-        return await self.repository.listar_categorias()
+        return await self.categoria_repository.listar_categorias()
     
     async def obtener_categoria(self, categoria_id: int):
         return await self.repository.obtener_por_id(categoria_id)
