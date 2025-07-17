@@ -1,9 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, logger, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-
-# from ..application.categoria_service import CategoriaService
-# from ..infraestructura.categoria_repository import CategoriaRepository
 from ...infraestructura.categoria_repository import CategoriaRepository
 from ...application.categoria_service import CategoriaService
 from ....database.session import get_db
@@ -80,8 +77,15 @@ async def crear_categoria(
     """
     Crea una nueva categoría.
     
-    Parámetros:
-    - nombre: Nombre de la nueva categoría (debe ser único)
+    Args:
+        categoria_data (CategoriaCreate): Datos de la categoría a crear
+        
+    Returns:
+        CategoriaOut: La categoría creada con su ID
+        
+    Raises:
+        HTTPException: 400 si el nombre ya existe
+        HTTPException: 500 si hay un error interno
     """
     try:
         return await service.crear_categoria(categoria_data.nombre)
@@ -89,4 +93,10 @@ async def crear_categoria(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error al crear categoría: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error interno al procesar la solicitud"
         )
