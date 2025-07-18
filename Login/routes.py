@@ -116,7 +116,7 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.get("/me", response_model=UsuarioResponse)
+@router.get("/users", response_model=UsuarioResponse)
 async def read_current_user(
     current_user: UsuarioResponse = Depends(get_current_user)
 ):
