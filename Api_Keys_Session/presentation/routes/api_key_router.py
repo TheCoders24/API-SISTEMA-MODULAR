@@ -163,3 +163,4 @@ async def api_key_required(x_api_key: str = Header(..., alias="X-API-KEY")) -> A
 )
 async def test_protected():
     return {"ok": True, "msg": "Acceso autorizado con API Key válida."}
+
