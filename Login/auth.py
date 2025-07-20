@@ -7,10 +7,10 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 import sqlalchemy as sa
 from ..database.session import get_db
-# from .schemas import TokenData
 import os
 from dotenv import load_dotenv
 import traceback
+import uuid
 
 # Cargar variables de entorno
 load_dotenv()
@@ -23,8 +23,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "300"
 # Configuración de seguridad
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-# Configuración del hash de contraseña con bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifica si una contraseña coincide con su hash almacenado"""
@@ -40,9 +38,10 @@ async def authenticate_user(
     password: str
 ) -> Optional[dict]:
     try:
+        # Obtener todos los campos necesarios para el token
         result = await db.execute(
             sa.text("""
-                SELECT email, password
+                SELECT id, nombre, email, password, is_active
                 FROM usuarios
                 WHERE email = :email
             """),
@@ -60,52 +59,62 @@ async def authenticate_user(
         if not verify_password(password, hashed_password):
             return None
 
-        return dict(user)
+        # Convertir a diccionario y eliminar la contraseña
+        user_dict = dict(user)
+        user_dict.pop("password", None)  # Eliminar contraseña por seguridad
+        return user_dict
 
     except Exception as e:
         print("Error en authenticate_user:", e)
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error en la autenticación"
         )
 
-
-
 def create_access_token(
-    data: dict,
+    user_data: dict,
     expires_delta: Optional[timedelta] = None
 ) -> str:
     """
-    Genera un token JWT
+    Genera un token JWT con los datos necesarios del usuario
     
     Args:
-        data: Datos a incluir en el token
+        user_data: Datos del usuario (debe contener: id, nombre, email, is_active)
         expires_delta: Tiempo de expiración del token
     
     Returns:
         str: Token JWT firmado
     """
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    # Crear payload con datos esenciales
+    to_encode = {
+        "sub": user_data["email"],  # Subject estándar
+        "jti": str(uuid.uuid4()),   # Identificador único para posible revocación
+        "id": user_data["id"],
+        "nombre": user_data["nombre"],
+        "is_active": user_data["is_active"],
+    }
+    
+    # Agregar expiración
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
+    
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    db: AsyncSession = Depends(get_db)
+    token: Annotated[str, Depends(oauth2_scheme)]
 ) -> dict:
     """
-    Obtiene el usuario actual basado en el token JWT
+    Obtiene el usuario actual basado en el token JWT (sin consultar la base de datos)
     
     Args:
         token: Token JWT
-        db: Sesión de base de datos
     
     Returns:
-        dict: Datos del usuario
+        dict: Datos del usuario extraídos del token
     
     Raises:
-        HTTPException: Si el token es inválido o el usuario no existe
+        HTTPException: Si el token es inválido
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -114,33 +123,31 @@ async def get_current_user(
     )
     
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if not email:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    
-    try:
-        result = await db.execute(
-            sa.text("""
-            SELECT id, nombre, email, is_active
-            FROM usuarios
-            WHERE email = :email
-            """),
-            {"email": email}
+        # Decodificar token con verificación de expiración
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            options={"verify_exp": True}  # Verificar expiración
         )
-        user = result.mappings().first()
         
-        if not user:
+        # Verificar campos esenciales
+        required_fields = ["sub", "id", "nombre", "is_active"]
+        if not all(field in payload for field in required_fields):
+            print(f"Faltan campos en el token: {payload}")
             raise credentials_exception
             
-        return dict(user)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error al obtener el usuario"
-        )
+        # Renombrar is_active a activo para consistencia
+        payload["activo"] = payload["is_active"]
+            
+        return payload
+    except JWTError as e:
+        print(f"ERROR DECODIFICANDO TOKEN: {str(e)}")
+        print(f"TOKEN RECIBIDO: {token}")
+        print(f"SECRET_KEY: {SECRET_KEY}")
+        print(f"ALGORITMO: {ALGORITHM}")
+        traceback.print_exc()
+        raise credentials_exception
 
 async def get_current_active_user(
     current_user: Annotated[dict, Depends(get_current_user)]
@@ -157,7 +164,7 @@ async def get_current_active_user(
     Raises:
         HTTPException: Si el usuario está inactivo
     """
-    if not current_user.get("is_active", True):
+    if not current_user.get("activo", True):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuario inactivo"

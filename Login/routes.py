@@ -1,14 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Body, Response
 from fastapi.security import OAuth2PasswordRequestForm
+from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 import sqlalchemy as sa
 from ..database.session import get_db
 import logging
 from datetime import timedelta
 from typing import Annotated
+from jose import jwt, JWTError
 
 # Importaciones de tu auth.py corregido
 from .auth import (
+    ALGORITHM,
+    SECRET_KEY,
     get_current_active_user,
     create_access_token,
     authenticate_user,
@@ -104,9 +108,29 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # Asegurarse que tenemos todos los campos necesarios
+    if "id" not in user or "nombre" not in user or "is_active" not in user:
+        print("Datos de usuario incompletos:", user)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Datos de usuario incompletos"
+        )
+    
     # Crear token de acceso con datos del usuario
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(user, expires_delta=access_token_expires)
+    
+    # Depuración: Verificar que el token se puede decodificar
+    try:
+        payload = jwt.decode(
+            access_token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            options={"verify_exp": False}  # Solo para depuración
+        )
+        print("Token generado correctamente:", payload)
+    except JWTError as e:
+        print("ERROR en token generado:", str(e))
     
     # Opcional: Guardar token en cookie segura
     response.set_cookie(
@@ -117,7 +141,7 @@ async def login_for_access_token(
         samesite="strict",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
-    print(f"Token Recibido", access_token)
+    
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/users", response_model=UsuarioResponse)
