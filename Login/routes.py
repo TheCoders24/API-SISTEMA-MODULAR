@@ -197,6 +197,5 @@ async def update_current_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuario no encontrado"
         )
-    
     # Convertir a diccionario y devolver
     return dict(updated_user._mapping)
