@@ -288,3 +288,37 @@ VALUES
 
 COMMENT ON TABLE Usuarios IS 'Tabla que almacena la información de los usuarios del sistema.';
 COMMENT ON COLUMN Usuarios.password IS 'Contraseña encriptada del usuario.';
+
+
+
+
+#  correcion despues de ejecutar toda la base de datos ejecutar lo siguiente para hacer correciones de un trigger de registrar_auditoria
+
+CREATE OR REPLACE FUNCTION registrar_auditoria() RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        INSERT INTO Auditoria (tabla_afectada, accion, id_registro, usuario_id, detalles)
+        VALUES (TG_TABLE_NAME, 'INSERT', NEW.id, NULL, row_to_json(NEW));
+    ELSIF TG_OP = 'UPDATE' THEN
+        INSERT INTO Auditoria (tabla_afectada, accion, id_registro, usuario_id, detalles)
+        VALUES (TG_TABLE_NAME, 'UPDATE', NEW.id, NULL, row_to_json(NEW));
+    ELSIF TG_OP = 'DELETE' THEN
+        INSERT INTO Auditoria (tabla_afectada, accion, id_registro, usuario_id, detalles)
+        VALUES (TG_TABLE_NAME, 'DELETE', OLD.id, NULL, row_to_json(OLD));
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+# correciones y cambios en lo siguiente:
+# Función de cambio de precio
+
+CREATE OR REPLACE FUNCTION registrar_cambio_precio() RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.precio IS DISTINCT FROM NEW.precio THEN
+        INSERT INTO Historial_Precios (producto_id, precio_anterior, precio_nuevo, usuario_id)
+        VALUES (NEW.id, OLD.precio, NEW.precio, NULL);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
