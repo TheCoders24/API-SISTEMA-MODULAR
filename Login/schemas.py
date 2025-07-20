@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 # ───────────────────────────────────────────────
-# API Key Models (si los usas en otros endpoints)
+# API Key Models
 # ───────────────────────────────────────────────
 
 class APIkeyCreate(BaseModel):
@@ -18,16 +18,11 @@ class APIkeyResponse(BaseModel):
 # ─────────────────────────────
 
 class UsuarioBase(BaseModel):
-    nombre: str = Field(..., max_length=100, examples="Juan Perez")
-    email: EmailStr = Field(..., min_length=8, examples="Ejemplo@example.com")
+    nombre: str = Field(..., max_length=100, examples=["Juan Perez"])
+    email: EmailStr = Field(..., min_length=8, examples=["ejemplo@example.com"])
 
 class UsuarioCreate(UsuarioBase):
-    password: SecretStr = Field(..., min_length=8, examples="Password")
-
-    class config:
-        json_encoders = {
-            SecretStr: lambda v: v.get_secret_value() if v else None
-        }
+    password: SecretStr = Field(..., min_length=8, examples=["PasswordSegura123"])
 
 # ─────────────────────────────
 # Usuario Login
@@ -43,25 +38,22 @@ class UsuarioLogin(BaseModel):
 
 class UsuarioResponse(UsuarioBase):
     id: int
-    fecha_registro: datetime
+    activo: bool  # Campo agregado para el estado de la cuenta
+    # fecha_registro: datetime  # Comentado porque no está en el token
 
     class Config:
         from_attributes = True
-        populate_by_name = True
 
 class UsuarioResponseWithAPIKey(UsuarioResponse):
-    api_key: str  # ✅ CORREGIDO: ahora es un string, no un modelo
+    api_key: str
 
 # ─────────────────────────────
-# JWT Token y Datos del Token
+# JWT Token
 # ─────────────────────────────
 
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
-
-class TokenData(BaseModel):
-    email: Optional[str] = None
 
 # ─────────────────────────────
 # Usuario Actualización
@@ -69,5 +61,4 @@ class TokenData(BaseModel):
 
 class UsuarioUpdate(BaseModel):
     nombre: Optional[str] = Field(None, max_length=100, example="Juan Pérez Modificado")
-    email: Optional[EmailStr] = Field(None, example="nuevo@example.com")
     password: Optional[SecretStr] = Field(None, min_length=8, example="NuevaPassword123")
