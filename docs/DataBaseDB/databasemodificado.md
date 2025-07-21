@@ -23,6 +23,7 @@ CREATE TABLE Usuarios (
     nombre VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(512) NOT NULL,
+    is_active boolean DEFAULT true,
     fecha_registro TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -322,3 +323,20 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+
+-- 2. Crear función de auditoría
+CREATE OR REPLACE FUNCTION auditoria_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO auditoria (id_registro, tabla, accion, fecha)
+    VALUES (OLD.id, TG_TABLE_NAME, 'DELETE', now());
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 3. Crear trigger para la tabla productos
+CREATE TRIGGER trg_auditoria_delete
+AFTER DELETE ON productos
+FOR EACH ROW
+EXECUTE FUNCTION auditoria_delete();
