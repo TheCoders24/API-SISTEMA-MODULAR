@@ -150,6 +150,7 @@ async def login_for_access_token(
 async def read_current_user(
     current_user: dict = Depends(get_current_active_user)
 ):
+    print("DEBUG current_user", current_user) # <-- para ver que este recibiendo correctamente los datos 
     """Endpoint protegido que devuelve datos del usuario actual"""
     return {
         "id": current_user["id"],
@@ -199,3 +200,19 @@ async def update_current_user(
         )
     # Convertir a diccionario y devolver
     return dict(updated_user._mapping)
+
+# -------------------------------------------------
+# ENDPOINT /users (usuario autenticado)
+# -------------------------------------------------
+
+@router.get("/current_user", response_model=UsuarioResponse)
+async def read_current_user(
+    current_user: Annotated[dict, Depends(get_current_active_user)]
+):
+    """Devuelve datos del usuario autenticado"""
+    return UsuarioResponse(
+        id=current_user["id"],
+        nombre=current_user["nombre"],
+        email=current_user["sub"],
+        activo=current_user["activo"],
+    )
