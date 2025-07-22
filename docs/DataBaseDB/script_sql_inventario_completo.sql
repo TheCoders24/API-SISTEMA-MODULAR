@@ -252,3 +252,5 @@ COMMENT ON TABLE public.usuarios IS 'Tabla que almacena la información de los u
 COMMENT ON COLUMN public.usuarios.password IS 'Contraseña encriptada del usuario.';
 
 END;
+
+---------------------------------------------------------------------------------------------------------
