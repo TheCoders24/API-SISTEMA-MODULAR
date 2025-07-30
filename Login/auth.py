@@ -20,16 +20,41 @@ from pydantic import BaseModel, EmailStr
 logger = logging.getLogger(__name__)
 load_dotenv()
 
+"""
 ENV = os.getenv("ENV", "production")
 SECRET_KEY = os.getenv("SECRET_KEY", os.urandom(32).hex())
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1"))
 
 DEV_SECRET = os.getenv("DEV_SECRET", "clave_dev_segura_" + os.urandom(16).hex())
-DEV_TOKEN_LIFETIME = 15  # minutos
+DEV_TOKEN_LIFETIME = 1  # minutos
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+"""
+
+# Entorno actual
+ENV = os.getenv("ENV", "production")
+
+# Secret según entorno
+DEV_SECRET = os.getenv("DEV_SECRET", "clave_dev_segura_" + os.urandom(16).hex())
+PROD_SECRET = os.getenv("SECRET_KEY", os.urandom(32).hex())
+SECRET_KEY = DEV_SECRET if ENV == "development" else PROD_SECRET
+
+# Algoritmo JWT
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+
+# Tiempo de expiración del token según entorno
+DEV_TOKEN_LIFETIME = int(os.getenv("DEV_TOKEN_LIFETIME", 1))  # en minutos
+PROD_TOKEN_LIFETIME = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1))  # en minutos
+ACCESS_TOKEN_EXPIRE_MINUTES = DEV_TOKEN_LIFETIME if ENV == "development" else PROD_TOKEN_LIFETIME
+
+# Seguridad de contraseñas y token
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+
 
 # Modelo de respuesta del usuario autenticado
 class UsuarioResponse(BaseModel):
