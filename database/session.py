@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 import os
 
 # Cargar variables de entorno (opcional)
-# load_dotenv()
+load_dotenv()
 
 # URL de conexión a PostgreSQL
 DATABASE_URL = "postgresql+asyncpg://postgres:12345@localhost:5432/sistemainventario"
-# DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE = os.getenv("DATABASE_URL")
 
 # Crear el motor asíncrono
 engine = create_async_engine(DATABASE_URL, echo=True)
