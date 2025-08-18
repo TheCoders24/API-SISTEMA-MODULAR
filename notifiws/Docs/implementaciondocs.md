@@ -1,4 +1,4 @@
-**explicación lista para documentar** sobre cómo integrar **actualizaciones en tiempo real con FastAPI, Postgres (LISTEN/NOTIFY) y WebSockets** para métricas y reportes.
+ **actualizaciones en tiempo real con FastAPI, Postgres (LISTEN/NOTIFY) y WebSockets** para métricas y reportes.
 
 ---
 
