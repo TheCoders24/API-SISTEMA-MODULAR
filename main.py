@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .categoria.presentation.routes.categoria_router import categoria_router
 from .proveedores.presentation.routes.proveedores_router import proveedores_router
 from .Api_Keys_Session.services.api_key_service import create_api_key, validate_api_key
-
+from .webSocket.presentation.websocket.routes import websocket
 import logging
 from logging.config import dictConfig
 import uvicorn
@@ -73,6 +73,7 @@ async def log_requests(request: Request, call_next):
     return response
 
 # Incluye los routers de cada módulo
+app.include_router(websocket)
 app.include_router(productos_router)
 app.include_router(login_router)
 app.include_router(categoria_router)

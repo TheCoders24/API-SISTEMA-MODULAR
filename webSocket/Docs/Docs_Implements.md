@@ -43,6 +43,11 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER ventas_trigger
 AFTER INSERT OR UPDATE OR DELETE ON ventas
 FOR EACH ROW EXECUTE FUNCTION notify_table_changes();
+
+CREATE TRIGGER critical_stock_trigger
+AFTER UPDATE ON inventory
+FOR EACH ROW WHEN (NEW.stock < 5)
+EXECUTE FUNCTION notify_changes();
 ```
 
 ### **2. FastAPI: Listener y WebSocket Manager**
