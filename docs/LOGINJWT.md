@@ -1,4 +1,3 @@
-¡Perfecto! Te voy a generar toda la documentación de tu sistema de seguridad y permisos para que quede lista en **Markdown**, lista para colocar en tu repositorio o documentación interna. Incluiré:
 
 * Flujo de autenticación y autorización
 * Middleware
