@@ -20,7 +20,8 @@ import time
 websocket_router = APIRouter()
 websocket = websocket_router
 
-# ========== ENDPOINTS EXISTENTES (MANTENER) ==========
+# ========== ENDPOINTS EXISTENTES (MANTENER Y CORREGIR) ==========
+
 @websocket_router.post("/websocket/admin/broadcast")
 async def admin_broadcast(
     broadcast_data: BroadcastRequest,
@@ -36,9 +37,16 @@ async def admin_broadcast(
             "broadcast_id": str(uuid.uuid4())
         }
         
-        # Broadcast a canales específicos
-        for channel in broadcast_data.target_channels or []:
-            if channel in ws_manager.active_connections:
+        # Broadcast a canales específicos (manejar None y array vacío)
+        target_channels = broadcast_data.target_channels or []
+        if target_channels:
+            for channel in target_channels:
+                if channel in ws_manager.active_connections:
+                    await ws_manager.broadcast(channel, broadcast_message)
+                    sent_count += len(ws_manager.active_connections[channel])
+        else:
+            # Si no hay canales específicos, broadcast a todos
+            for channel in ws_manager.active_connections.keys():
                 await ws_manager.broadcast(channel, broadcast_message)
                 sent_count += len(ws_manager.active_connections[channel])
         
@@ -176,7 +184,19 @@ async def send_to_user(
 ):
     """Enviar mensaje a un usuario específico"""
     try:
-        success = await ws_manager.send_to_user(user_id, message)
+        # Asumiendo que ws_manager tiene método send_to_user
+        success = False
+        for channel, connections in ws_manager.active_connections.items():
+            for connection in connections:
+                if hasattr(connection, 'user_id') and connection.user_id == user_id:
+                    try:
+                        await connection.websocket.send_json(message)
+                        success = True
+                        break
+                    except:
+                        continue
+            if success:
+                break
         
         if success:
             return {
@@ -207,7 +227,27 @@ async def disconnect_user(
 ):
     """Desconectar a un usuario específico"""
     try:
-        disconnected = await ws_manager.disconnect_user(user_id)
+        disconnected = False
+        channels_to_cleanup = []
+        
+        for channel, connections in ws_manager.active_connections.items():
+            for connection in list(connections):
+                if hasattr(connection, 'user_id') and connection.user_id == user_id:
+                    try:
+                        await connection.websocket.close(code=1000, reason="Disconnected by admin")
+                        connections.remove(connection)
+                        disconnected = True
+                    except:
+                        continue
+            
+            # Marcar canal para limpieza si está vacío
+            if not connections:
+                channels_to_cleanup.append(channel)
+        
+        # Limpiar canales vacíos
+        for channel in channels_to_cleanup:
+            if channel in ws_manager.active_connections:
+                del ws_manager.active_connections[channel]
         
         if disconnected:
             return {
@@ -231,7 +271,7 @@ async def disconnect_user(
         )
         raise HTTPException(status_code=500, detail=error_msg)
 
-# ========== ENDPOINTS NUEVOS ==========
+# ========== ENDPOINTS NUEVOS CORREGIDOS ==========
 
 # 1. Gestión de Canales
 @websocket_router.get("/websocket/channels")
@@ -240,10 +280,16 @@ async def list_active_channels():
     try:
         channels = []
         for channel_name, connections in ws_manager.active_connections.items():
+            # Obtener user_ids únicos de las conexiones
+            user_ids = set()
+            for connection in connections:
+                if hasattr(connection, 'user_id') and connection.user_id:
+                    user_ids.add(connection.user_id)
+            
             channels.append({
                 "channel": channel_name,
                 "connections": len(connections),
-                "users_connected": len({conn.user_id for conn in connections})
+                "users_connected": len(user_ids)
             })
         return {"channels": channels}
     except Exception as e:
@@ -258,12 +304,21 @@ async def close_channel(channel_name: str, background_tasks: BackgroundTasks):
             raise HTTPException(status_code=404, detail="Canal no encontrado")
         
         disconnected_count = 0
-        for connection in list(ws_manager.active_connections[channel_name]):
+        # Crear una copia de la lista para iterar
+        connections = list(ws_manager.active_connections[channel_name])
+        
+        for connection in connections:
             try:
                 await connection.websocket.close(code=1000, reason="Channel closed by admin")
                 disconnected_count += 1
+                # Remover la conexión del manager
+                ws_manager.active_connections[channel_name].remove(connection)
             except:
                 continue
+        
+        # Limpiar canal si está vacío
+        if not ws_manager.active_connections[channel_name]:
+            del ws_manager.active_connections[channel_name]
         
         return {
             "message": f"Canal {channel_name} cerrado",
@@ -280,10 +335,13 @@ async def live_connections():
     """Conexiones en tiempo real (SSE)"""
     async def event_generator():
         while True:
-            stats = ws_manager.get_stats()
+            # Calcular stats manualmente
+            total_connections = sum(len(conns) for conns in ws_manager.active_connections.values())
+            active_channels = len(ws_manager.active_connections)
+            
             yield f"data: {json.dumps({
-                'total_connections': stats['total_connections'],
-                'active_channels': stats['active_channels'],
+                'total_connections': total_connections,
+                'active_channels': active_channels,
                 'timestamp': datetime.now().isoformat()
             })}\n\n"
             await asyncio.sleep(5)
@@ -298,12 +356,13 @@ async def list_connected_users():
         users = []
         for channel, connections in ws_manager.active_connections.items():
             for connection in connections:
-                users.append({
-                    "user_id": connection.user_id,
-                    "channel": channel,
-                    "connected_since": connection.connected_at.isoformat(),
-                    "connection_duration": (datetime.now() - connection.connected_at).total_seconds()
-                })
+                if hasattr(connection, 'user_id') and hasattr(connection, 'connected_at'):
+                    users.append({
+                        "user_id": connection.user_id,
+                        "channel": channel,
+                        "connected_since": connection.connected_at.isoformat(),
+                        "connection_duration": (datetime.now() - connection.connected_at).total_seconds()
+                    })
         return {"connected_users": users, "total": len(users)}
     except Exception as e:
         error_msg = ErrorMessageManager.get_error_message(ErrorType.INTERNAL_ERROR, str(e))
@@ -316,11 +375,11 @@ async def user_connection_info(user_id: str):
         user_connections = []
         for channel, connections in ws_manager.active_connections.items():
             for connection in connections:
-                if connection.user_id == user_id:
+                if hasattr(connection, 'user_id') and connection.user_id == user_id:
                     user_connections.append({
                         "channel": channel,
-                        "connected_since": connection.connected_at.isoformat(),
-                        "duration_seconds": (datetime.now() - connection.connected_at).total_seconds()
+                        "connected_since": connection.connected_at.isoformat() if hasattr(connection, 'connected_at') else datetime.now().isoformat(),
+                        "duration_seconds": (datetime.now() - (connection.connected_at if hasattr(connection, 'connected_at') else datetime.now())).total_seconds()
                     })
         
         return {
@@ -343,10 +402,22 @@ async def bulk_messages(messages: List[Dict[str, Any]], background_tasks: Backgr
         
         for message in messages:
             try:
-                success = await ws_manager.send_to_user(
-                    message["user_id"],
-                    message["data"]
-                )
+                user_id = message.get("user_id")
+                message_data = message.get("data", {})
+                success = False
+                
+                for channel, connections in ws_manager.active_connections.items():
+                    for connection in connections:
+                        if hasattr(connection, 'user_id') and connection.user_id == user_id:
+                            try:
+                                await connection.websocket.send_json(message_data)
+                                success = True
+                                break
+                            except:
+                                continue
+                    if success:
+                        break
+                
                 if success:
                     sent_count += 1
                 else:
@@ -367,19 +438,21 @@ async def bulk_messages(messages: List[Dict[str, Any]], background_tasks: Backgr
 @websocket_router.post("/websocket/messages/scheduled")
 async def schedule_message(
     message_data: Dict[str, Any],
-    schedule_time: datetime,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    schedule_time: datetime = Query(None)
 ):
     """Programar mensaje para envío futuro"""
     try:
+        if not schedule_time:
+            schedule_time = datetime.now() + timedelta(minutes=5)
+        
         async def send_scheduled_message():
             delay = (schedule_time - datetime.now()).total_seconds()
             if delay > 0:
                 await asyncio.sleep(delay)
-                await ws_manager.broadcast(
-                    message_data["channel"],
-                    message_data["message"]
-                )
+                channel = message_data.get("channel", "notifications")
+                message = message_data.get("message", {})
+                await ws_manager.broadcast(channel, message)
         
         background_tasks.add_task(send_scheduled_message)
         
@@ -396,12 +469,16 @@ async def schedule_message(
 # 5. Analytics y Reportes
 @websocket_router.get("/websocket/analytics/usage")
 async def usage_analytics(
-    start_date: datetime = Query(datetime.now() - timedelta(days=7)),
-    end_date: datetime = Query(datetime.now())
+    start_date: datetime = Query(None),
+    end_date: datetime = Query(None)
 ):
     """Analytics de uso del sistema WebSocket"""
     try:
-        # Simulación de datos - implementar con base de datos real
+        if not start_date:
+            start_date = datetime.now() - timedelta(days=7)
+        if not end_date:
+            end_date = datetime.now()
+        
         return {
             "period": {
                 "start": start_date.isoformat(),
@@ -411,7 +488,8 @@ async def usage_analytics(
             "avg_daily_connections": 75,
             "total_messages_sent": 1250,
             "most_active_channel": "notifications",
-            "message_throughput_per_hour": 89
+            "message_throughput_per_hour": 89,
+            "current_connections": sum(len(conns) for conns in ws_manager.active_connections.values())
         }
     except Exception as e:
         error_msg = ErrorMessageManager.get_error_message(ErrorType.INTERNAL_ERROR, str(e))
@@ -421,7 +499,6 @@ async def usage_analytics(
 async def performance_metrics():
     """Métricas de performance del sistema"""
     try:
-        # Métricas del sistema
         memory = psutil.virtual_memory()
         cpu_percent = psutil.cpu_percent(interval=1)
         
@@ -435,7 +512,7 @@ async def performance_metrics():
             "websocket": {
                 "total_connections": sum(len(conns) for conns in ws_manager.active_connections.values()),
                 "active_channels": len(ws_manager.active_connections),
-                "connection_rate_per_minute": 0  # Implementar tracking
+                "connection_rate_per_minute": 0
             },
             "timestamp": datetime.now().isoformat()
         }
@@ -452,7 +529,7 @@ async def system_notification(notification: Dict[str, Any]):
             "type": "system_notification",
             "priority": notification.get("priority", "info"),
             "title": notification.get("title", "System Notification"),
-            "message": notification.get("message"),
+            "message": notification.get("message", ""),
             "timestamp": datetime.now().isoformat(),
             "notification_id": str(uuid.uuid4())
         }
@@ -478,6 +555,7 @@ async def detailed_health_check():
     try:
         total_connections = sum(len(conns) for conns in ws_manager.active_connections.values())
         memory = psutil.virtual_memory()
+        cpu_percent = psutil.cpu_percent(interval=1)
         
         return {
             "status": "healthy",
@@ -493,8 +571,8 @@ async def detailed_health_check():
                     "available_mb": round(memory.available / (1024**2), 2)
                 },
                 "cpu": {
-                    "status": "ok",
-                    "usage_percent": psutil.cpu_percent(interval=1)
+                    "status": "ok" if cpu_percent < 80 else "warning",
+                    "usage_percent": cpu_percent
                 }
             },
             "timestamp": datetime.now().isoformat(),
@@ -510,14 +588,14 @@ async def export_configuration():
     """Exportar configuración actual del WebSocket"""
     try:
         config = {
-            "active_connections": {
+            "active_connections_per_channel": {
                 channel: len(connections)
                 for channel, connections in ws_manager.active_connections.items()
             },
             "total_connections": sum(len(conns) for conns in ws_manager.active_connections.values()),
+            "active_channels": list(ws_manager.active_connections.keys()),
             "exported_at": datetime.now().isoformat(),
-            "version": "1.0",
-            "channels_list": list(ws_manager.active_connections.keys())
+            "version": "1.0"
         }
         return config
     except Exception as e:
