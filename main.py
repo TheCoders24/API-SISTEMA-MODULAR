@@ -18,9 +18,12 @@ from .proveedores.presentation.routes.proveedores_router import proveedores_rout
 from .Api_Keys_Session.services.api_key_service import create_api_key, validate_api_key
 from .webSocket.presentation.websocket.routes import websocket
 from .logger.presentation.websocket.routes import websocket_router
+from .monitoring.monitoreodb.endpoint import router as monitoreo_router
+from .monitoring.monitoreodb.manager import stats_background_task
 import logging
 from logging.config import dictConfig
 import uvicorn
+from .v2.message_routes import router_v2_
 
 # Configuración avanzada de logging
 LOG_CONFIG = {
@@ -63,7 +66,9 @@ dictConfig(LOG_CONFIG)
 logger = logging.getLogger("api")
 logger.setLevel(logging.INFO)
 
-app = FastAPI()
+app = FastAPI(title="API Inventario v1")
+
+app = FastAPI(title="API Inventario v2")
 
 # Middleware para registrar todas las solicitudes
 @app.middleware("http")
@@ -73,6 +78,14 @@ async def log_requests(request: Request, call_next):
     logger.info(f"{request.method} {request.url.path} -> {response.status_code}")
     return response
 
+
+#incluimos la version de la api/v2 en pruebas
+app.include_router(router_v2_ ,prefix="/api/v2")
+
+
+
+# incluimos el router de monitoreo con su routers o prefijo
+app.include_router(monitoreo_router, prefix="/monitoreo", tags=["monitoreo"])
 # Incluye los routers de cada módulo
 app.include_router(websocket_router)
 app.include_router(websocket)
