@@ -32,6 +32,8 @@ def ensure_logs_dir(logs_dir: str) -> Path:
     log_path.mkdir(exist_ok=True, parents=True)
     return log_path
 
+
+
 def get_current_log_file(logs_dir: str) -> Path:
     """Obtener el archivo de log actual basado en la fecha actual"""
     log_path = ensure_logs_dir(logs_dir)
