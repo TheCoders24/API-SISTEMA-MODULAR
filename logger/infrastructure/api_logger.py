@@ -42,6 +42,8 @@ class APILogger:
         
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
         file_handler.setLevel(logging.ERROR)
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setLevel(logging.INFO)
         
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s\n'
