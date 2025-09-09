@@ -6,7 +6,7 @@ import json
 
 class Settings(BaseSettings):
     # Base
-    PROJECT_NAME: str = "WebSocket Notification System"
+    PROJECT_NAME: str = "Sistema de Inventario y WebSocket"
     VERSION: str = "1.0.0"
     ENVIRONMENT: str = "production"
 

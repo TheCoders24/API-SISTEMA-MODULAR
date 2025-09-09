@@ -64,3 +64,31 @@ class ProductService:
         except Exception as e:
             logging.error(f"Error al eliminar el producto: {str(e)}")
             return False
+    
+    async def update_product(self, product_id: int, data: schemas.ProductoUpdate) -> schemas.Producto:
+        # Verificar si el producto existe
+        existing_product = await self.repository.get_by_id(product_id)
+        if not existing_product:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Producto no encontrado"
+            )
+        
+        # Verificar conflicto de nombre (si se está actualizando el nombre)
+        if data.nombre and data.nombre != existing_product.nombre:
+            if await self.repository.get_by_name(data.nombre):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Ya existe un producto con ese nombre"
+                )
+        
+        # Actualizar el producto
+        try:
+            updated_product = await self.repository.update(product_id, data.dict(exclude_unset=True))
+            return updated_product
+        except Exception as e:
+            logging.error(f"Error al actualizar el producto: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error interno al actualizar el producto"
+            )

@@ -19,7 +19,7 @@ class ProductoCreate(ProductoBase):
     pass
 
 class ProductoUpdate(BaseModel):
-    nombre: Optional[str] = Field(None, min_length=1, max_length=100, example="Teclado mecánico actualizado")
+    nombre: Optional[str] = Field(None, min_length=1, max_length=100, example="EJ: Teclado Mecanico")
     descripcion: Optional[str] = Field(None, max_length=500)
     precio: Optional[float] = Field(None, gt=0)
     stock: Optional[int] = Field(None, ge=0)

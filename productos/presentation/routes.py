@@ -101,3 +101,27 @@ async def eliminar_producto(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al eliminar producto"
         )
+
+# Endpoint para actualizar un producto
+# @router.put("/actualizar/{product_id}", response_model=schemas.Producto)
+@router.patch("/actualizar/{product_id}", response_model=schemas.Producto)
+async def update_product(
+    product_id: int, 
+    product_data: schemas.ProductoUpdate, 
+    service: ProductService = Depends(get_product_service)
+):
+    """
+    Actualiza un producto existente.
+    
+    - **product_id**: ID del producto a actualizar
+    - **product_data**: Campos a actualizar (parcial o completo)
+    """
+    try:
+        return await service.update_product(product_id, product_data)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al actualizar el producto: {str(e)}"
+        )
