@@ -58,16 +58,12 @@ LOG_CONFIG = {
         "uvicorn.access": {"handlers": ["access"], "level": "INFO", "propagate": False},
     },
 }
-
 # Aplicar configuración de logging
 dictConfig(LOG_CONFIG)
-
 # Crear logger personalizado
 logger = logging.getLogger("api")
 logger.setLevel(logging.INFO)
-
 app = FastAPI(title="API Inventario v1")
-
 app = FastAPI(title="API Inventario v2")
 
 # Middleware para registrar todas las solicitudes
@@ -78,11 +74,8 @@ async def log_requests(request: Request, call_next):
     logger.info(f"{request.method} {request.url.path} -> {response.status_code}")
     return response
 
-
 #incluimos la version de la api/v2 en pruebas
 app.include_router(router_v2_ ,prefix="/api/v2")
-
-
 
 # incluimos el router de monitoreo con su routers o prefijo
 app.include_router(monitoreo_router, prefix="/monitoreo", tags=["monitoreo"])
@@ -97,7 +90,7 @@ app.include_router(proveedores_router)
 # Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://192.168.193.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
