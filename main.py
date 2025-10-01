@@ -24,6 +24,7 @@ import logging
 from logging.config import dictConfig
 import uvicorn
 from .v2.message_routes import router_v2_
+from .Ventas import router as ventas_router
 
 # Configuración avanzada de logging
 LOG_CONFIG = {
@@ -79,7 +80,9 @@ app.include_router(router_v2_ ,prefix="/api/v2")
 
 # incluimos el router de monitoreo con su routers o prefijo
 app.include_router(monitoreo_router, prefix="/monitoreo", tags=["monitoreo"])
+
 # Incluye los routers de cada módulo
+app.include_router(ventas_router)
 app.include_router(websocket_router)
 app.include_router(websocket)
 app.include_router(productos_router)

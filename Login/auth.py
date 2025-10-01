@@ -46,8 +46,8 @@ SECRET_KEY = DEV_SECRET if ENV == "development" else PROD_SECRET
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 # Tiempo de expiración del token según entorno
-DEV_TOKEN_LIFETIME = int(os.getenv("DEV_TOKEN_LIFETIME", 1))  # en minutos
-PROD_TOKEN_LIFETIME = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1))  # en minutos
+DEV_TOKEN_LIFETIME = int(os.getenv("DEV_TOKEN_LIFETIME", 30))  # en minutos
+PROD_TOKEN_LIFETIME = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))  # en minutos
 ACCESS_TOKEN_EXPIRE_MINUTES = DEV_TOKEN_LIFETIME if ENV == "development" else PROD_TOKEN_LIFETIME
 
 # Seguridad de contraseñas y token
