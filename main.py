@@ -68,10 +68,9 @@ app = FastAPI(title="API Inventario v1")
 app = FastAPI(title="API Inventario v2")
 
 #incluimos la version de la api/v2 en pruebas
-app.include_router(router_v2_ ,prefix="/api/v2")
-
+# app.include_router(router_v2_ ,prefix="/api/v2")
 # incluimos el router de monitoreo con su routers o prefijo
-app.include_router(monitoreo_router, prefix="/monitoreo", tags=["monitoreo"])
+# app.include_router(monitoreo_router, prefix="/monitoreo", tags=["monitoreo"])
 
 # Incluye los routers de cada módulo
 app.include_router(ventas_router)
