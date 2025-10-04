@@ -1,5 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi import Depends, HTTPException, status
+
+from .logger.infrastructure.models import LogLevel
 from .productos.presentation.routes import router as productos_router
 from .Login.routes import router as login_router
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -59,21 +61,11 @@ LOG_CONFIG = {
         "uvicorn.access": {"handlers": ["access"], "level": "INFO", "propagate": False},
     },
 }
-# Aplicar configuración de logging
+
+# Aplicar configuración de logging 
 dictConfig(LOG_CONFIG)
-# Crear logger personalizado
-logger = logging.getLogger("api")
-logger.setLevel(logging.INFO)
 app = FastAPI(title="API Inventario v1")
 app = FastAPI(title="API Inventario v2")
-
-# Middleware para registrar todas las solicitudes
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    response = await call_next(request)
-    # Registrar todas las solicitudes con su código de estado
-    logger.info(f"{request.method} {request.url.path} -> {response.status_code}")
-    return response
 
 #incluimos la version de la api/v2 en pruebas
 app.include_router(router_v2_ ,prefix="/api/v2")
@@ -83,7 +75,7 @@ app.include_router(monitoreo_router, prefix="/monitoreo", tags=["monitoreo"])
 
 # Incluye los routers de cada módulo
 app.include_router(ventas_router)
-app.include_router(websocket_router)
+# app.include_router(websocket_router)
 app.include_router(websocket)
 app.include_router(productos_router)
 app.include_router(login_router)
