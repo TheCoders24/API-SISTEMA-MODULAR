@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Request
 from fastapi import Depends, HTTPException, status
-
 from .logger.infrastructure.models import LogLevel
 from .productos.presentation.routes import router as productos_router
 from .Login.routes import router as login_router
