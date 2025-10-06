@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Request
 from fastapi import Depends, HTTPException, status
-from .logger.infrastructure.models import LogLevel
 from .productos.presentation.routes import router as productos_router
 from .Login.routes import router as login_router
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -18,7 +17,6 @@ from .categoria.presentation.routes.categoria_router import categoria_router
 from .proveedores.presentation.routes.proveedores_router import proveedores_router
 from .Api_Keys_Session.services.api_key_service import create_api_key, validate_api_key
 from .webSocket.presentation.websocket.routes import websocket
-from .logger.presentation.websocket.routes import websocket_router
 from .monitoring.monitoreodb.endpoint import router as monitoreo_router
 from .monitoring.monitoreodb.manager import stats_background_task
 import logging
