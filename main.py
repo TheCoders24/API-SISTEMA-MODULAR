@@ -62,7 +62,7 @@ LOG_CONFIG = {
 }
 
 # Aplicar configuración de logging 
-dictConfig(LOG_CONFIG)
+#dictConfig(LOG_CONFIG)
 app = FastAPI(title="API Inventario v1")
 app = FastAPI(title="API Inventario v2")
 
@@ -74,7 +74,7 @@ app = FastAPI(title="API Inventario v2")
 # Incluye los routers de cada módulo
 app.include_router(ventas_router)
 # app.include_router(websocket_router)
-app.include_router(websocket)
+# app.include_router(websocket)
 app.include_router(productos_router)
 app.include_router(login_router)
 app.include_router(categoria_router)
