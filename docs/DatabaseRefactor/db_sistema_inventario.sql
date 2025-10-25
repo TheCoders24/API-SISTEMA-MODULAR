@@ -17,10 +17,10 @@ CREATE TABLE Proveedores (
 CREATE TABLE Usuarios (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(512) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabla: Productos
@@ -37,7 +37,7 @@ CREATE TABLE Productos (
 -- Tabla: Ventas
 CREATE TABLE Ventas (
     id SERIAL PRIMARY KEY,
-    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     total DECIMAL(10,2) NOT NULL CHECK (total >= 0),
     usuario_id INT REFERENCES Usuarios(id) ON DELETE SET NULL
 );
@@ -55,9 +55,9 @@ CREATE TABLE Detalle_Ventas (
 CREATE TABLE Movimientos (
     id SERIAL PRIMARY KEY,
     producto_id INT NOT NULL REFERENCES Productos(id) ON DELETE CASCADE,
-    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('entrada', 'salida')),
+    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('entrada','salida')),
     cantidad INT NOT NULL CHECK (cantidad > 0),
-    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     usuario_id INT REFERENCES Usuarios(id) ON DELETE SET NULL
 );
 
@@ -65,7 +65,7 @@ CREATE TABLE Movimientos (
 CREATE TABLE Pedidos_Proveedores (
     id SERIAL PRIMARY KEY,
     proveedor_id INT NOT NULL REFERENCES Proveedores(id) ON DELETE CASCADE,
-    fecha_pedido TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_pedido TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fecha_entrega TIMESTAMP,
     total DECIMAL(10,2) NOT NULL CHECK (total >= 0)
 );
@@ -83,7 +83,7 @@ CREATE TABLE Detalle_Pedidos_Proveedores (
 CREATE TABLE Devoluciones (
     id SERIAL PRIMARY KEY,
     venta_id INT NOT NULL REFERENCES Ventas(id) ON DELETE CASCADE,
-    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     motivo TEXT,
     usuario_id INT REFERENCES Usuarios(id) ON DELETE SET NULL
 );
@@ -101,9 +101,9 @@ CREATE TABLE Detalle_Devoluciones (
 CREATE TABLE Auditoria (
     id SERIAL PRIMARY KEY,
     tabla_afectada VARCHAR(100) NOT NULL,
-    accion VARCHAR(20) NOT NULL CHECK (accion IN ('INSERT', 'UPDATE', 'DELETE')),
+    accion VARCHAR(20) NOT NULL CHECK (accion IN ('INSERT','UPDATE','DELETE')),
     id_registro INT NOT NULL,
     usuario_nombre VARCHAR(100),
-    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     detalles TEXT
 );
