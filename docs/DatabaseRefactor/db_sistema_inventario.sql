@@ -1,3 +1,5 @@
+
+
 -- Tabla: Categorias
 CREATE TABLE Categorias (
     id SERIAL PRIMARY KEY,
