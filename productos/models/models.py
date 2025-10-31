@@ -33,3 +33,7 @@ class Producto(Base):
 
     categoria = relationship("Categoria", back_populates="productos")
     proveedor = relationship("Proveedor", back_populates="productos")
+
+    class Config:
+        orm_mode = True
+        
