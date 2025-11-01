@@ -133,8 +133,8 @@ async def crear_proveedor(
         )
 
 #endpoint actualizar_proveedor
-@proveedores_router.put(
-    "/{proveedor_id}",
+@proveedores_router.patch(
+    "/actualizar/{proveedor_id}",
     response_model=ProveedoresOut,
     status_code=status.HTTP_200_OK,
     summary="Actualizar un proveedor",
