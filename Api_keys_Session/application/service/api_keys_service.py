@@ -5,9 +5,11 @@ from typing import List, Optional, Dict, Any
 #from application.use_cases.create_api_key import CreateAPIKeyUseCase
 #from application.use_cases.validate_api_key import ValidateAPIKeyUseCase
 
-from domain.entities.repositories.api_keys_repository import APIKeyRepository
-from application.use_cases.create_api_keys import CreateAPIKeyUseCase
-from application.use_cases.validate_api_keys import ValidateAPIKeyUseCase
+#from ..entities.repositories.api_keys_repository import APIKeyRepository
+from ...domain.entities.repositories.api_keys_repository import APIKeyRepository
+from ...application.use_cases.create_api_keys import CreateAPIKeyUseCase
+#from ....Api_keys_Session.application.use_cases.create_api_keys import CreateAPIKeyUseCase
+from ...application.use_cases.validate_api_keys import ValidateAPIKeyUseCase
 
 class APIKeyService:
     def __init__(self, api_key_repository: APIKeyRepository):

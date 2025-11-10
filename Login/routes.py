@@ -23,9 +23,10 @@ from .auth import (
     oauth2_scheme
 )
 from .schemas import UsuarioResponseWithAPIKey, UsuarioCreate, UsuarioResponse, UsuarioUpdate, Token, UsuarioLogin
-from ..Api_Keys_Session.services.api_key_service import create_api_key
-from ..Api_Keys_Session.schemas.api_keys_schemas import APIkeyCreate, APIkeyResponse
-
+# from ..Api_Keys_Session.services.api_key_service import create_api_key
+#from ..Api_Keys_Session.schemas.api_keys_schemas import APIkeyCreate, APIkeyResponse
+from ..Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase
+from ..Api_keys_Session.presentation.schemas.api_keys_schemas import APIKeyCreate, APIKeyResponse
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -78,8 +79,8 @@ async def register_user(
         await db.commit()
 
         # 4. Crear API Key
-        api_key_data = APIkeyCreate(user_id=str(new_user.id))
-        api_key_response = await create_api_key(api_key_data)
+        api_key_data = APIKeyCreate(user_id=str(new_user.id))
+        api_key_response = await CreateAPIKeyUseCase(api_key_data)
 
         # 5. Preparar respuesta
         user_dict = dict(new_user._mapping)

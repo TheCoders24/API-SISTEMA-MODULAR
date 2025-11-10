@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from .categoria.presentation.routes.categoria_router import categoria_router
 from .proveedores.presentation.routes.proveedores_router import proveedores_router
-from .Api_Keys_Session.services.api_key_service import create_api_key, validate_api_key
+#from .Api_Keys_Session.services.api_key_service import create_api_key, validate_api_key
+from .Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase,ValidateAPIKeyUseCase
 from .webSocket.presentation.websocket.routes import websocket
 from .monitoring.monitoreodb.endpoint import router as monitoreo_router
 from .monitoring.monitoreodb.manager import stats_background_task

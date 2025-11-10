@@ -5,8 +5,8 @@ from typing import Dict, Any
 
 #from domain.entities.api_key import APIKeyEntity
 #from domain.repositories.api_key_repository import APIKeyRepository
-from domain.entities.api_keys import APIKeyEntity
-from domain.entities.repositories.api_keys_repository import APIKeyRepository
+from ...domain.entities.repositories.api_keys_repository import APIKeyRepository, APIKeyEntity
+
 
 
 class CreateAPIKeyUseCase:
