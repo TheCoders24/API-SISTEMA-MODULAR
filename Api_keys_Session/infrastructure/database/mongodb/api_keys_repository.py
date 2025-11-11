@@ -3,7 +3,8 @@ from typing import List, Optional
 from bson import ObjectId
 import hashlib
 import secrets
-from domain.entities.api_keys import APIKeyEntity
+# from domain.entities.api_keys import APIKeyEntity
+from ....domain.entities.api_keys import APIKeyEntity
 from ....domain.entities.repositories.api_keys_repository import APIKeyRepository
 from .....database.Mongodb_Connection import mongo_db
 
