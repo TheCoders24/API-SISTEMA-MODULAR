@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 @dataclass
 class APIKeyEntity:
-    """Entidad de dominio para API Keys"""
+    """IEntidad de dominio para AP Keys"""
     id: Optional[str]
     user_id: str
     hashed_key: str

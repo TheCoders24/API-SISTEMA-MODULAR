@@ -4,6 +4,10 @@ Table Categorias {
   nombre VARCHAR(100) [unique]
 }
 
+
+ALTER TABLE usuarios
+ADD COLUMN activo BOOLEAN DEFAULT TRUE;
+
 Table Proveedores {
   id SERIAL [pk]
   nombre VARCHAR(100)

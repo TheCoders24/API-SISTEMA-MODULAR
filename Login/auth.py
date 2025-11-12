@@ -107,20 +107,20 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> Opti
             detail="Error en la autenticación"
         )
 
-def create_access_token(user_data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    # NO anonimizamos el 'id', mantenemos entero
-    to_encode = {
-        "sub": user_data["email"],
-        "jti": str(uuid.uuid4()),
-        "id": int(user_data["id"]),  # Asegúrate que es int
-        "nombre": user_data["nombre"],
-        "is_active": user_data["is_active"],
-        "env": ENV
-    }
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """
+    Genera un JWT con los datos del usuario.
+    """
+    to_encode = data.copy()
+
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, get_actual_secret(), algorithm=ALGORITHM)
 
+    # Agregar campos adicionales si no están
+    to_encode.setdefault("jti", str(uuid.uuid4()))
+    to_encode.setdefault("env", ENV)
+
+    return jwt.encode(to_encode, get_actual_secret(), algorithm=ALGORITHM)
 
 async def validate_token_payload(payload: dict) -> dict:
     required_fields = ["sub", "id", "nombre", "is_active", "env"]

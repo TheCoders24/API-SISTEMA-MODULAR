@@ -1,0 +1,593 @@
+commit 320dfb07e7a443ea8dec453c7d3228b4fa96a021
+Author: Alexis Urquidez <162842416+TheCoders24@users.noreply.github.com>
+Date:   Tue Nov 11 19:15:09 2025 -0600
+
+    add correcion api_session_token
+
+diff --git a/Api_keys_Session/application/service/api_keys_service.py b/Api_keys_Session/application/service/api_keys_service.py
+index 19c54ed..b95f3b7 100644
+--- a/Api_keys_Session/application/service/api_keys_service.py
++++ b/Api_keys_Session/application/service/api_keys_service.py
+@@ -1,14 +1,7 @@
+ import asyncio
+ from typing import List, Optional, Dict, Any
+-
+-#from domain.repositories.api_key_repository import APIKeyRepository
+-#from application.use_cases.create_api_key import CreateAPIKeyUseCase
+-#from application.use_cases.validate_api_key import ValidateAPIKeyUseCase
+-
+-#from ..entities.repositories.api_keys_repository import APIKeyRepository
+ from ...domain.entities.repositories.api_keys_repository import APIKeyRepository
+ from ...application.use_cases.create_api_keys import CreateAPIKeyUseCase
+-#from ....Api_keys_Session.application.use_cases.create_api_keys import CreateAPIKeyUseCase
+ from ...application.use_cases.validate_api_keys import ValidateAPIKeyUseCase
+ 
+ class APIKeyService:
+diff --git a/Api_keys_Session/application/use_cases/create_api_keys.py b/Api_keys_Session/application/use_cases/create_api_keys.py
+index 3bb199a..218f8fd 100644
+--- a/Api_keys_Session/application/use_cases/create_api_keys.py
++++ b/Api_keys_Session/application/use_cases/create_api_keys.py
+@@ -1,51 +1,66 @@
+ from datetime import datetime, timedelta
+ import secrets
+ import hashlib
+-from typing import Dict, Any
+-
+-#from domain.entities.api_key import APIKeyEntity
+-#from domain.repositories.api_key_repository import APIKeyRepository
+-from ...domain.entities.repositories.api_keys_repository import APIKeyRepository, APIKeyEntity
+-
++from typing import Dict, Any, List, Optional
++from ...domain.entities.api_keys import APIKeyEntity
++from ...domain.entities.repositories.api_keys_repository import APIKeyRepository
++from ...presentation.schemas.api_keys_schemas import APIKeyCreate
+ 
+ 
+ class CreateAPIKeyUseCase:
+     def __init__(self, api_key_repository: APIKeyRepository):
+         self.api_key_repository = api_key_repository
+-    
++
+     def generate_key(self) -> str:
++        """Genera una API key aleatoria"""
+         return secrets.token_urlsafe(32)
+-    
++
+     def hash_key(self, key: str) -> str:
++        """Hashea la API key con SHA256"""
+         return hashlib.sha256(key.encode()).hexdigest()
+-    
++
+     async def execute(
+         self,
+         user_id: str,
+-        permissions: list = None,
++        permissions: Optional[List[str]] = None,
+         expires_in_days: int = 30,
+-        name: str = None,
+-        description: str = None
++        name: Optional[str] = None,
++        description: Optional[str] = None,
+     ) -> Dict[str, Any]:
++        """Crea una nueva API Key para el usuario especificado"""
+         raw_key = self.generate_key()
+         hashed_key = self.hash_key(raw_key)
+-        
++
+         api_key_entity = APIKeyEntity(
+             id=None,
+-            user_id=user_id,
++            user_id=str(user_id),
+             hashed_key=hashed_key,
+             permissions=permissions or ["default"],
+             created_at=datetime.utcnow(),
+             expires_at=datetime.utcnow() + timedelta(days=expires_in_days),
+             is_active=True,
+             name=name,
+-            description=description
++            description=description,
+         )
+-        
++
+         saved_entity = await self.api_key_repository.create(api_key_entity)
+-        
++
++        # 🔧 Manejo flexible: puede ser dict o entidad
++        if isinstance(saved_entity, dict):
++            key_id = saved_entity.get("id")
++            expires_at = saved_entity.get("expires_at")
++            permissions = saved_entity.get("permissions", [])
++            is_active = saved_entity.get("is_active", True)
++        else:
++            key_id = getattr(saved_entity, "id", None)
++            expires_at = getattr(saved_entity, "expires_at", None)
++            permissions = getattr(saved_entity, "permissions", [])
++            is_active = getattr(saved_entity, "is_active", True)
++
+         return {
+-            "key_id": saved_entity.id,
++            "key_id": key_id,
+             "raw_key": raw_key,
+-            "expires_at": saved_entity.expires_at
+-        }
+\ No newline at end of file
++            "expires_at": expires_at,
++            "permissions": permissions,
++            "is_active": is_active,
++        }
+diff --git a/Api_keys_Session/application/use_cases/validate_api_keys.py b/Api_keys_Session/application/use_cases/validate_api_keys.py
+index 81904b6..9cdf91e 100644
+--- a/Api_keys_Session/application/use_cases/validate_api_keys.py
++++ b/Api_keys_Session/application/use_cases/validate_api_keys.py
+@@ -1,7 +1,6 @@
+ from datetime import datetime
+ import hashlib
+ from typing import Optional, Dict, Any
+-# from domain.repositories.api_key_repository import APIKeyRepository
+ from ...domain.entities.repositories.api_keys_repository import APIKeyRepository
+ 
+ class ValidateAPIKeyUseCase:
+diff --git a/Api_keys_Session/domain/entities/api_keys.py b/Api_keys_Session/domain/entities/api_keys.py
+index 3713d97..ffde750 100644
+--- a/Api_keys_Session/domain/entities/api_keys.py
++++ b/Api_keys_Session/domain/entities/api_keys.py
+@@ -4,7 +4,7 @@ from dataclasses import dataclass
+ 
+ @dataclass
+ class APIKeyEntity:
+-    """Entidad de dominio para API Keys"""
++    """IEntidad de dominio para AP Keys"""
+     id: Optional[str]
+     user_id: str
+     hashed_key: str
+diff --git a/Api_keys_Session/domain/entities/repositories/api_keys_repository_impl.py b/Api_keys_Session/domain/entities/repositories/api_keys_repository_impl.py
+new file mode 100644
+index 0000000..fc50147
+--- /dev/null
++++ b/Api_keys_Session/domain/entities/repositories/api_keys_repository_impl.py
+@@ -0,0 +1,79 @@
++# from ..database.mongo_connection import mongo_db
++# from ...domain.entities.api_keys import APIKeyEntity
++# from ...domain.repositories.api_keys_repository import APIKeyRepository
++# from bson import ObjectId
++
++from .....database.Mongodb_Connection import mongo_db
++from ....domain.entities.api_keys import APIKeyEntity
++from ....domain.entities.repositories.api_keys_repository import APIKeyRepository
++from bson import ObjectId
++from motor.motor_asyncio import AsyncIOMotorClient
++from datetime import datetime, timedelta
++
++
++class MongoAPIKeyRepository(APIKeyRepository):
++    """Implementación del repositorio de API Keys usando MongoDB y Motor"""
++
++    def __init__(self):
++        self.collection = mongo_db["api_keys"]
++
++    async def create(self, api_key: APIKeyEntity) -> APIKeyEntity:
++        """Guarda una API Key en MongoDB"""
++        # Convertir entidad a dict manualmente
++        data = {
++            "_id": ObjectId(api_key.id) if api_key.id else ObjectId(),
++            "user_id": api_key.user_id,
++            "hashed_key": api_key.hashed_key,
++            "expires_at": api_key.expires_at,
++            "created_at": api_key.created_at,
++        }
++        await self.collection.insert_one(data)
++        api_key.id = str(data["_id"])
++        return api_key
++
++    async def find_by_hashed_key(self, hashed_key: str):
++        result = await self.collection.find_one({"hashed_key": hashed_key})
++        return self._map(result) if result else None
++
++    async def find_by_id(self, key_id: str):
++        result = await self.collection.find_one({"_id": ObjectId(key_id)})
++        return self._map(result) if result else None
++
++    async def find_by_user_id(self, user_id: str):
++        cursor = self.collection.find({"user_id": user_id})
++        results = await cursor.to_list(length=None)
++        return [self._map(doc) for doc in results]
++
++    async def update(self, api_key: APIKeyEntity) -> bool:
++        result = await self.collection.update_one(
++            {"_id": ObjectId(api_key.id)},
++            {"$set": {
++                "hashed_key": api_key.hashed_key,
++                "expires_at": api_key.expires_at
++            }}
++        )
++        return result.modified_count > 0
++
++    async def delete_expired(self) -> int:
++        now = datetime.utcnow()
++        result = await self.collection.delete_many({"expires_at": {"$lt": now}})
++        return result.deleted_count
++
++    async def get_stats(self) -> dict:
++        total = await self.collection.count_documents({})
++        activos = await self.collection.count_documents({"expires_at": {"$gt": datetime.utcnow()}})
++        return {"total": total, "activos": activos}
++
++    # ------------------------------------------------------------
++    # Función auxiliar para mapear documentos a entidades
++    # ------------------------------------------------------------
++    def _map(self, doc) -> APIKeyEntity:
++        if not doc:
++            return None
++        return APIKeyEntity(
++            id=str(doc["_id"]),
++            user_id=doc["user_id"],
++            hashed_key=doc["hashed_key"],
++            expires_at=doc["expires_at"],
++            created_at=doc["created_at"]
++        )
+diff --git a/Api_keys_Session/infrastructure/database/mongodb/api_keys_repository.py b/Api_keys_Session/infrastructure/database/mongodb/api_keys_repository.py
+index 1ffdcf9..d7f39f2 100644
+--- a/Api_keys_Session/infrastructure/database/mongodb/api_keys_repository.py
++++ b/Api_keys_Session/infrastructure/database/mongodb/api_keys_repository.py
+@@ -3,7 +3,6 @@ from typing import List, Optional
+ from bson import ObjectId
+ import hashlib
+ import secrets
+-# from domain.entities.api_keys import APIKeyEntity
+ from ....domain.entities.api_keys import APIKeyEntity
+ from ....domain.entities.repositories.api_keys_repository import APIKeyRepository
+ from .....database.Mongodb_Connection import mongo_db
+diff --git a/Login/auth.py b/Login/auth.py
+index 8f8af21..a2efbff 100644
+--- a/Login/auth.py
++++ b/Login/auth.py
+@@ -107,20 +107,20 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> Opti
+             detail="Error en la autenticación"
+         )
+ 
+-def create_access_token(user_data: dict, expires_delta: Optional[timedelta] = None) -> str:
+-    # NO anonimizamos el 'id', mantenemos entero
+-    to_encode = {
+-        "sub": user_data["email"],
+-        "jti": str(uuid.uuid4()),
+-        "id": int(user_data["id"]),  # Asegúrate que es int
+-        "nombre": user_data["nombre"],
+-        "is_active": user_data["is_active"],
+-        "env": ENV
+-    }
++def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
++    """
++    Genera un JWT con los datos del usuario.
++    """
++    to_encode = data.copy()
++
+     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+     to_encode.update({"exp": expire})
+-    return jwt.encode(to_encode, get_actual_secret(), algorithm=ALGORITHM)
+ 
++    # Agregar campos adicionales si no están
++    to_encode.setdefault("jti", str(uuid.uuid4()))
++    to_encode.setdefault("env", ENV)
++
++    return jwt.encode(to_encode, get_actual_secret(), algorithm=ALGORITHM)
+ 
+ async def validate_token_payload(payload: dict) -> dict:
+     required_fields = ["sub", "id", "nombre", "is_active", "env"]
+diff --git a/Login/routes.py b/Login/routes.py
+index ffab0b5..0567090 100644
+--- a/Login/routes.py
++++ b/Login/routes.py
+@@ -2,16 +2,17 @@
+ 
+ from fastapi import APIRouter, Depends, HTTPException, status, Body, Response
+ from fastapi.security import OAuth2PasswordRequestForm
+-from jose import JWTError
++from jose import JWTError, jwt
+ from sqlalchemy.ext.asyncio import AsyncSession
+ import sqlalchemy as sa
+-from ..database.session import get_db
+-import logging
+ from datetime import timedelta
+ from typing import Annotated
+-from jose import jwt, JWTError
++import logging
+ 
+-# Importaciones de tu auth.py corregido
++from ..database.session import get_db
++from ..Api_keys_Session.domain.entities.repositories.api_keys_repository_impl import MongoAPIKeyRepository
++from ..Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase
++from ..Api_keys_Session.presentation.schemas.api_keys_schemas import APIKeyCreate
+ from .auth import (
+     ALGORITHM,
+     SECRET_KEY,
+@@ -20,17 +21,24 @@ from .auth import (
+     authenticate_user,
+     get_password_hash,
+     ACCESS_TOKEN_EXPIRE_MINUTES,
+-    oauth2_scheme
+ )
+-from .schemas import UsuarioResponseWithAPIKey, UsuarioCreate, UsuarioResponse, UsuarioUpdate, Token, UsuarioLogin
+-# from ..Api_Keys_Session.services.api_key_service import create_api_key
+-#from ..Api_Keys_Session.schemas.api_keys_schemas import APIkeyCreate, APIkeyResponse
+-from ..Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase
+-from ..Api_keys_Session.presentation.schemas.api_keys_schemas import APIKeyCreate, APIKeyResponse
+-logger = logging.getLogger(__name__)
++from .schemas import (
++    UsuarioResponseWithAPIKey,
++    UsuarioCreate,
++    UsuarioResponse,
++    UsuarioUpdate,
++    Token,
++    UsuarioLogin,
++)
+ 
++logger = logging.getLogger(__name__)
+ router = APIRouter(prefix="/auth", tags=["auth"])
+ 
++
++# ==============================================================
++# FUNCIONES AUXILIARES
++# ==============================================================
++
+ async def get_user_by_email(db: AsyncSession, email: str):
+     """Obtiene un usuario por email con todos los campos necesarios"""
+     result = await db.execute(
+@@ -43,29 +51,35 @@ async def get_user_by_email(db: AsyncSession, email: str):
+     )
+     return result.fetchone()
+ 
+-@router.post("/register", response_model=UsuarioResponseWithAPIKey, status_code=status.HTTP_201_CREATED)
++
++# ==============================================================
++# REGISTRO DE USUARIO
++# ==============================================================
++
++@router.post(
++    "/register",
++    response_model=Token,  # 👈 devolvemos el token en lugar del usuario directo
++    status_code=status.HTTP_201_CREATED
++)
+ async def register_user(
+     user_data: UsuarioCreate,
+     db: AsyncSession = Depends(get_db)
+ ):
+     try:
+-        # 1. Verificar si el usuario ya existe
++        # 1️⃣ Verificar si ya existe
+         existing_user = await get_user_by_email(db, user_data.email)
+         if existing_user:
+-            raise HTTPException(
+-                status_code=status.HTTP_400_BAD_REQUEST,
+-                detail="El email ya está registrado"
+-            )
++            raise HTTPException(status_code=400, detail="El email ya está registrado")
+ 
+-        # 2. Hashear la contraseña
++        # 2️⃣ Hashear contraseña
+         hashed_password = get_password_hash(user_data.password.get_secret_value())
+ 
+-        # 3. Insertar nuevo usuario
++        # 3️⃣ Crear usuario
+         result = await db.execute(
+             sa.text("""
+-                INSERT INTO usuarios (nombre, email, password)
+-                VALUES (:nombre, :email, :password)
+-                RETURNING id, nombre, email
++                INSERT INTO usuarios (nombre, email, password, is_active)
++                VALUES (:nombre, :email, :password, TRUE)
++                RETURNING id, nombre, email, is_active
+             """),
+             {
+                 "nombre": user_data.nombre,
+@@ -78,31 +92,45 @@ async def register_user(
+             raise HTTPException(status_code=500, detail="No se pudo crear el usuario")
+         await db.commit()
+ 
+-        # 4. Crear API Key
+-        api_key_data = APIKeyCreate(user_id=str(new_user.id))
+-        api_key_response = await CreateAPIKeyUseCase(api_key_data)
++        # 4️⃣ Crear API Key
++        api_key_repository = MongoAPIKeyRepository()
++        use_case = CreateAPIKeyUseCase(api_key_repository)
++        api_key_response = await use_case.execute(user_id=str(new_user.id))
+ 
+-        # 5. Preparar respuesta
+-        user_dict = dict(new_user._mapping)
+-        if "raw_key" in api_key_response:
+-            user_dict["api_key"] = api_key_response["raw_key"]
+-        else:
+-            logger.error("No se pudo generar la API Key")
+-            raise HTTPException(status_code=500, detail="No se pudo generar la API Key")
++        # 5️⃣ Crear token JWT
++        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
++        access_token = create_access_token(
++            data={"sub": str(new_user.id), "email": new_user.email},
++            expires_delta=access_token_expires
++        )
+ 
+-        return user_dict
++        # 6️⃣ Devolver respuesta esperada
++        return {
++            "access_token": access_token,
++            "token_type": "bearer",
++            "user": {
++                "id": new_user.id,
++                "nombre": new_user.nombre,
++                "email": new_user.email,
++                "api_key": api_key_response["raw_key"]
++            }
++        }
+ 
+     except Exception as e:
+         logger.exception("Error al registrar usuario")
+         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+ 
++
++# ==============================================================
++# LOGIN DE USUARIO
++# ==============================================================
++
+ @router.post("/login", response_model=Token)
+ async def login_for_access_token(
+     response: Response,
+     form_data: UsuarioLogin = Body(...),
+     db: AsyncSession = Depends(get_db)
+ ):
+-    # Autenticar usuario con email y contraseña
+     user = await authenticate_user(db, form_data.email, form_data.password.get_secret_value())
+     if not user:
+         raise HTTPException(
+@@ -110,32 +138,25 @@ async def login_for_access_token(
+             detail="Credenciales incorrectas",
+             headers={"WWW-Authenticate": "Bearer"},
+         )
+-    
+-    # Asegurarse que tenemos todos los campos necesarios
++
+     if "id" not in user or "nombre" not in user or "is_active" not in user:
+-        print("Datos de usuario incompletos:", user)
+         raise HTTPException(
+             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+             detail="Datos de usuario incompletos"
+         )
+-    
+-    # Crear token de acceso con datos del usuario
++
++    # Crear token JWT
+     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+     access_token = create_access_token(user, expires_delta=access_token_expires)
+-    
+-    # Depuración: Verificar que el token se puede decodificar
++
++    # Debug del token
+     try:
+-        payload = jwt.decode(
+-            access_token,
+-            SECRET_KEY,
+-            algorithms=[ALGORITHM],
+-            options={"verify_exp": False}  # Solo para depuración
+-        )
+-        print("Token generado correctamente:", payload)
++        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
++        logger.info(f"Token generado correctamente: {payload}")
+     except JWTError as e:
+-        print("ERROR en token generado:", str(e))
+-    
+-    # Opcional: Guardar token en cookie segura
++        logger.error(f"Error al decodificar token: {str(e)}")
++
++    # Cookie segura (opcional)
+     response.set_cookie(
+         key="session_token",
+         value=access_token,
+@@ -144,44 +165,47 @@ async def login_for_access_token(
+         samesite="strict",
+         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+     )
+-    
++
+     return {"access_token": access_token, "token_type": "bearer"}
+ 
++
++# ==============================================================
++# OBTENER USUARIO ACTUAL
++# ==============================================================
++
+ @router.get("/users", response_model=UsuarioResponse)
+ async def read_current_user(
+     current_user: dict = Depends(get_current_active_user)
+ ):
+-    print("DEBUG current_user", current_user) # <-- para ver que este recibiendo correctamente los datos 
+-    """Endpoint protegido que devuelve datos del usuario actual"""
++    logger.debug(f"Usuario autenticado actual: {current_user}")
+     return {
+         "id": current_user["id"],
+         "nombre": current_user["nombre"],
+-        "email": current_user["sub"],  # 'sub' contiene el email
++        "email": current_user["sub"],
+         "activo": current_user["activo"]
+     }
+ 
++
++# ==============================================================
++# ACTUALIZAR USUARIO
++# ==============================================================
++
+ @router.patch("/me", response_model=UsuarioResponse)
+ async def update_current_user(
+     user_data: UsuarioUpdate,
+     current_user: dict = Depends(get_current_active_user),
+     db: AsyncSession = Depends(get_db)
+ ):
+-    """Actualiza los datos del usuario actual"""
+     update_data = user_data.model_dump(exclude_unset=True)
+-    
++
+     if "password" in update_data:
+         update_data["password"] = get_password_hash(update_data["password"].get_secret_value())
+-    
++
+     if not update_data:
+-        raise HTTPException(
+-            status_code=status.HTTP_400_BAD_REQUEST,
+-            detail="No se proporcionaron datos para actualizar"
+-        )
+-    
+-    # Construir la consulta dinámicamente
++        raise HTTPException(status_code=400, detail="No se proporcionaron datos para actualizar")
++
+     set_clause = ", ".join([f"{key} = :{key}" for key in update_data.keys()])
+-    
+-    # Actualizar usando el ID del usuario del token
++
+     result = await db.execute(
+         f"""
+         UPDATE usuarios
+@@ -193,24 +217,21 @@ async def update_current_user(
+     )
+     updated_user = result.fetchone()
+     await db.commit()
+-    
++
+     if not updated_user:
+-        raise HTTPException(
+-            status_code=status.HTTP_404_NOT_FOUND,
+-            detail="Usuario no encontrado"
+-        )
+-    # Convertir a diccionario y devolver
++        raise HTTPException(status_code=404, detail="Usuario no encontrado")
++
+     return dict(updated_user._mapping)
+ 
+-# -------------------------------------------------
+-# ENDPOINT /users (usuario autenticado)
+-# -------------------------------------------------
++
++# ==============================================================
++# OBTENER USUARIO AUTENTICADO (ALIAS)
++# ==============================================================
+ 
+ @router.get("/current_user", response_model=UsuarioResponse)
+-async def read_current_user(
++async def read_current_user_alias(
+     current_user: Annotated[dict, Depends(get_current_active_user)]
+ ):
+-    """Devuelve datos del usuario autenticado"""
+     return UsuarioResponse(
+         id=current_user["id"],
+         nombre=current_user["nombre"],
+diff --git a/docs/DatabaseRefactor/db_sistema_inventario.md b/docs/DatabaseRefactor/db_sistema_inventario.md
+index dcd982c..255abc0 100644
+--- a/docs/DatabaseRefactor/db_sistema_inventario.md
++++ b/docs/DatabaseRefactor/db_sistema_inventario.md
+@@ -4,6 +4,10 @@ Table Categorias {
+   nombre VARCHAR(100) [unique]
+ }
+ 
++
++ALTER TABLE usuarios
++ADD COLUMN activo BOOLEAN DEFAULT TRUE;
++
+ Table Proveedores {
+   id SERIAL [pk]
+   nombre VARCHAR(100)
