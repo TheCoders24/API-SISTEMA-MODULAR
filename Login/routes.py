@@ -2,17 +2,16 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status, Body, Response
 from fastapi.security import OAuth2PasswordRequestForm
-from jose import JWTError, jwt
+from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 import sqlalchemy as sa
+from ..database.session import get_db
+import logging
 from datetime import timedelta
 from typing import Annotated
-import logging
+from jose import jwt, JWTError
 
-from ..database.session import get_db
-from ..Api_keys_Session.domain.entities.repositories.api_keys_repository_impl import MongoAPIKeyRepository
-from ..Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase
-from ..Api_keys_Session.presentation.schemas.api_keys_schemas import APIKeyCreate
+# Importaciones de tu auth.py corregido
 from .auth import (
     ALGORITHM,
     SECRET_KEY,
@@ -21,23 +20,16 @@ from .auth import (
     authenticate_user,
     get_password_hash,
     ACCESS_TOKEN_EXPIRE_MINUTES,
+    oauth2_scheme
 )
-from .schemas import (
-    UsuarioResponseWithAPIKey,
-    UsuarioCreate,
-    UsuarioResponse,
-    UsuarioUpdate,
-    Token,
-    UsuarioLogin,
-)
-
+from .schemas import UsuarioResponseWithAPIKey, UsuarioCreate, UsuarioResponse, UsuarioUpdate, Token, UsuarioLogin
+# from ..Api_Keys_Session.services.api_key_service import create_api_key
+#from ..Api_Keys_Session.schemas.api_keys_schemas import APIkeyCreate, APIkeyResponse
+from ..Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase
+from ..Api_keys_Session.presentation.schemas.api_keys_schemas import APIKeyCreate, APIKeyResponse
 logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-# ==============================================================
-# FUNCIONES AUXILIARES
-# ==============================================================
 
 async def get_user_by_email(db: AsyncSession, email: str):
     """Obtiene un usuario por email con todos los campos necesarios"""
@@ -51,35 +43,29 @@ async def get_user_by_email(db: AsyncSession, email: str):
     )
     return result.fetchone()
 
-
-# ==============================================================
-# REGISTRO DE USUARIO
-# ==============================================================
-
-@router.post(
-    "/register",
-    response_model=Token,  # 👈 devolvemos el token en lugar del usuario directo
-    status_code=status.HTTP_201_CREATED
-)
+@router.post("/register", response_model=UsuarioResponseWithAPIKey, status_code=status.HTTP_201_CREATED)
 async def register_user(
     user_data: UsuarioCreate,
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        # 1️⃣ Verificar si ya existe
+        # 1. Verificar si el usuario ya existe
         existing_user = await get_user_by_email(db, user_data.email)
         if existing_user:
-            raise HTTPException(status_code=400, detail="El email ya está registrado")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El email ya está registrado"
+            )
 
-        # 2️⃣ Hashear contraseña
+        # 2. Hashear la contraseña
         hashed_password = get_password_hash(user_data.password.get_secret_value())
 
-        # 3️⃣ Crear usuario
+        # 3. Insertar nuevo usuario
         result = await db.execute(
             sa.text("""
-                INSERT INTO usuarios (nombre, email, password, is_active)
-                VALUES (:nombre, :email, :password, TRUE)
-                RETURNING id, nombre, email, is_active
+                INSERT INTO usuarios (nombre, email, password)
+                VALUES (:nombre, :email, :password)
+                RETURNING id, nombre, email
             """),
             {
                 "nombre": user_data.nombre,
@@ -92,38 +78,23 @@ async def register_user(
             raise HTTPException(status_code=500, detail="No se pudo crear el usuario")
         await db.commit()
 
-        # 4️⃣ Crear API Key
-        api_key_repository = MongoAPIKeyRepository()
-        use_case = CreateAPIKeyUseCase(api_key_repository)
-        api_key_response = await use_case.execute(user_id=str(new_user.id))
+        # 4. Crear API Key
+        api_key_data = APIKeyCreate(user_id=str(new_user.id))
+        api_key_response = await CreateAPIKeyUseCase(api_key_data)
 
-        # 5️⃣ Crear token JWT
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": str(new_user.id), "email": new_user.email},
-            expires_delta=access_token_expires
-        )
+        # 5. Preparar respuesta
+        user_dict = dict(new_user._mapping)
+        if "raw_key" in api_key_response:
+            user_dict["api_key"] = api_key_response["raw_key"]
+        else:
+            logger.error("No se pudo generar la API Key")
+            raise HTTPException(status_code=500, detail="No se pudo generar la API Key")
 
-        # 6️⃣ Devolver respuesta esperada
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": {
-                "id": new_user.id,
-                "nombre": new_user.nombre,
-                "email": new_user.email,
-                "api_key": api_key_response["raw_key"]
-            }
-        }
+        return user_dict
 
     except Exception as e:
         logger.exception("Error al registrar usuario")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
-
-
-# ==============================================================
-# LOGIN DE USUARIO
-# ==============================================================
 
 @router.post("/login", response_model=Token)
 async def login_for_access_token(
@@ -131,6 +102,7 @@ async def login_for_access_token(
     form_data: UsuarioLogin = Body(...),
     db: AsyncSession = Depends(get_db)
 ):
+    # Autenticar usuario con email y contraseña
     user = await authenticate_user(db, form_data.email, form_data.password.get_secret_value())
     if not user:
         raise HTTPException(
@@ -138,25 +110,32 @@ async def login_for_access_token(
             detail="Credenciales incorrectas",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
+    
+    # Asegurarse que tenemos todos los campos necesarios
     if "id" not in user or "nombre" not in user or "is_active" not in user:
+        print("Datos de usuario incompletos:", user)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Datos de usuario incompletos"
         )
-
-    # Crear token JWT
+    
+    # Crear token de acceso con datos del usuario
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(user, expires_delta=access_token_expires)
-
-    # Debug del token
+    
+    # Depuración: Verificar que el token se puede decodificar
     try:
-        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
-        logger.info(f"Token generado correctamente: {payload}")
+        payload = jwt.decode(
+            access_token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            options={"verify_exp": False}  # Solo para depuración
+        )
+        print("Token generado correctamente:", payload)
     except JWTError as e:
-        logger.error(f"Error al decodificar token: {str(e)}")
-
-    # Cookie segura (opcional)
+        print("ERROR en token generado:", str(e))
+    
+    # Opcional: Guardar token en cookie segura
     response.set_cookie(
         key="session_token",
         value=access_token,
@@ -165,30 +144,21 @@ async def login_for_access_token(
         samesite="strict",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
-
+    
     return {"access_token": access_token, "token_type": "bearer"}
-
-
-# ==============================================================
-# OBTENER USUARIO ACTUAL
-# ==============================================================
 
 @router.get("/users", response_model=UsuarioResponse)
 async def read_current_user(
     current_user: dict = Depends(get_current_active_user)
 ):
-    logger.debug(f"Usuario autenticado actual: {current_user}")
+    print("DEBUG current_user", current_user) # <-- para ver que este recibiendo correctamente los datos 
+    """Endpoint protegido que devuelve datos del usuario actual"""
     return {
         "id": current_user["id"],
         "nombre": current_user["nombre"],
-        "email": current_user["sub"],
+        "email": current_user["sub"],  # 'sub' contiene el email
         "activo": current_user["activo"]
     }
-
-
-# ==============================================================
-# ACTUALIZAR USUARIO
-# ==============================================================
 
 @router.patch("/me", response_model=UsuarioResponse)
 async def update_current_user(
@@ -196,16 +166,22 @@ async def update_current_user(
     current_user: dict = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
+    """Actualiza los datos del usuario actual"""
     update_data = user_data.model_dump(exclude_unset=True)
-
+    
     if "password" in update_data:
         update_data["password"] = get_password_hash(update_data["password"].get_secret_value())
-
+    
     if not update_data:
-        raise HTTPException(status_code=400, detail="No se proporcionaron datos para actualizar")
-
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se proporcionaron datos para actualizar"
+        )
+    
+    # Construir la consulta dinámicamente
     set_clause = ", ".join([f"{key} = :{key}" for key in update_data.keys()])
-
+    
+    # Actualizar usando el ID del usuario del token
     result = await db.execute(
         f"""
         UPDATE usuarios
@@ -217,21 +193,24 @@ async def update_current_user(
     )
     updated_user = result.fetchone()
     await db.commit()
-
+    
     if not updated_user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado"
+        )
+    # Convertir a diccionario y devolver
     return dict(updated_user._mapping)
 
-
-# ==============================================================
-# OBTENER USUARIO AUTENTICADO (ALIAS)
-# ==============================================================
+# -------------------------------------------------
+# ENDPOINT /users (usuario autenticado)
+# -------------------------------------------------
 
 @router.get("/current_user", response_model=UsuarioResponse)
-async def read_current_user_alias(
+async def read_current_user(
     current_user: Annotated[dict, Depends(get_current_active_user)]
 ):
+    """Devuelve datos del usuario autenticado"""
     return UsuarioResponse(
         id=current_user["id"],
         nombre=current_user["nombre"],
