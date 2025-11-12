@@ -26,8 +26,12 @@ class APIKey:
             "expires_at": datetime.utcnow() + timedelta(days=expires_in_days),
             "is_active": True
         }
-        
+        print("KEY DATA CREATE_KEY", key_data)
+
         result = await self.collection.insert_one(key_data)
+        
+        print("RESULT DE KEY_DATA", result)
+
         return {"key_id": str(result.inserted_id), "raw_key": raw_key}
     
     async def validate_key(self, key: str):
