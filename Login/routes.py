@@ -10,9 +10,12 @@ from typing import Annotated
 import logging
 
 from ..database.session import get_db
-from ..Api_keys_Session.domain.entities.repositories.api_keys_repository_impl import MongoAPIKeyRepository
-from ..Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase
-from ..Api_keys_Session.presentation.schemas.api_keys_schemas import APIKeyCreate
+#from ..Api_keys_Session.domain.entities.repositories.api_keys_repository_imple import MongoAPIKeyRepository
+from ..Api_Keys_Session.domain.entities.repositories.api_keys_repository_impl import MongoAPIKeyRepository
+#from ..Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase
+from ..Api_Keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase
+#from ..Api_keys_Session.presentation.schemas.api_keys_schemas import APIKeyCreate
+from ..Api_Keys_Session.presentation.schemas.api_keys_schemas import APIKeyCreate
 from .auth import (
     ALGORITHM,
     SECRET_KEY,
@@ -103,6 +106,7 @@ async def register_user(
             data={"sub": str(new_user.id), "email": new_user.email},
             expires_delta=access_token_expires
         )
+        print("Creacion del Token JWT",access_token)
 
         # 6️⃣ Devolver respuesta esperada
         return {
