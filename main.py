@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from .database.base import Base
 from .database.session import engine
-from .Api_Keys_Session.models.api_key_models import create_key, validate_key
-from .Api_Keys_Session.schemas.api_keys_schemas import APIkeyCreate, APIkeyResponse, APIkeyInfo
+# from .Api_Keys_Session.models.api_key_models import create_key, validate_key
+# from .Api_Keys_Session.schemas.api_keys_schemas import APIkeyCreate, APIkeyResponse, APIkeyInfo
 from fastapi.security import APIKeyHeader
 from .database.session import DATABASE_URL
 from .database.session import get_db
@@ -15,7 +15,9 @@ from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from .categoria.presentation.routes.categoria_router import categoria_router
 from .proveedores.presentation.routes.proveedores_router import proveedores_router
-from .Api_Keys_Session.services.api_key_service import create_api_key, validate_api_key
+from .Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase,ValidateAPIKeyUseCase
+from .Api_keys_Session.presentation.routes.api_keys_router import api_key_router
+
 from .webSocket.presentation.websocket.routes import websocket
 from .monitoring.monitoreodb.endpoint import router as monitoreo_router
 from .monitoring.monitoreodb.manager import stats_background_task
@@ -66,9 +68,11 @@ app = FastAPI(title="API Inventario v2")
 
 #incluimos la version de la api/v2 en pruebas
 # app.include_router(router_v2_ ,prefix="/api/v2")
+
 # incluimos el router de monitoreo con su routers o prefijo
 # app.include_router(monitoreo_router, prefix="/monitoreo", tags=["monitoreo"])
 
+app.include_router(api_key_router)
 # Incluye los routers de cada módulo
 app.include_router(ventas_router)
 # app.include_router(websocket_router)
