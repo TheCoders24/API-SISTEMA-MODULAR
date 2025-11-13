@@ -103,7 +103,12 @@ async def register_user(
         # 5️⃣ Crear token JWT
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": str(new_user.id), "email": new_user.email},
+            data={
+                "sub": str(new_user.id),
+                "email": new_user.email,
+                "nombre": new_user.nombre.strip(),
+                "is_active": True
+            },
             expires_delta=access_token_expires
         )
         print("Creacion del Token JWT",access_token)
@@ -151,8 +156,16 @@ async def login_for_access_token(
 
     # Crear token JWT
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(user, expires_delta=access_token_expires)
-
+    # access_token = create_access_token(user, expires_delta=access_token_expires)
+    access_token = create_access_token(
+        data={
+            "sub": str(user["id"]),
+            "email": user["email"],
+            "nombre": user["nombre"].strip(),
+            "is_active": user["is_active"]
+        },
+        expires_delta=access_token_expires
+    )
     # Debug del token
     try:
         payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
@@ -185,7 +198,7 @@ async def read_current_user(
     return {
         "id": current_user["id"],
         "nombre": current_user["nombre"],
-        "email": current_user["sub"],
+        "email": current_user["email"],
         "activo": current_user["activo"]
     }
 
