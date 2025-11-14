@@ -44,6 +44,7 @@ class CreateAPIKeyUseCase:
         try:
             raw_key = self.generate_key()
             hashed_key = self.hash_key(raw_key)
+            
 
             print("[CreateAPIKeyUseCase] Construyendo entidad APIKeyEntity...")
             api_key_entity = APIKeyEntity(

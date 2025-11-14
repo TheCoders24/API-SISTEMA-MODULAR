@@ -53,7 +53,7 @@ class APIKeyService:
         self,
         user_id: str,
         permissions: List[str] = None,
-        expires_in_days: int = 30,
+        expires_in_days: int = 10,
         name: str = None,
         description: str = None
     ) -> Dict[str, Any]:
