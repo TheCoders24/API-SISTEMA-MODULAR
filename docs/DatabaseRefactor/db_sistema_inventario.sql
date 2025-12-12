@@ -110,6 +110,9 @@ CREATE TABLE Auditoria (
 );
 
 
+
+
+
 -- Índices para consultas frecuentes
 CREATE INDEX idx_productos_categoria ON Productos(categoria_id);
 CREATE INDEX idx_productos_proveedor ON Productos(proveedor_id);

@@ -7,7 +7,7 @@ import os
 load_dotenv()
 
 # URL de conexión a PostgreSQL
-DATABASE_URL = "postgresql+asyncpg://postgres:12345@localhost:5432/sistemainventario"
+DATABASE_URL = "postgresql+asyncpg://postgres:12345@localhost:5432/db_sistema_inventario_version2"
 DATABASE = os.getenv("DATABASE_URL")
 
 # Crear el motor asíncrono
