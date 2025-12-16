@@ -3,7 +3,7 @@ from typing import Generator
 from fastapi import Depends, HTTPException, status
 from ..infraestructure.repositories import ReporteRepositoryMemoria
 from ..infraestructure.services import GeneradorDatosMockService, ExportadorReporteService
-from ..application.casos_uso import (CrearReporteCasoUso,ObtenerEstadisticasCasoUso,GenerarReporteCasoUso,ExportarReporteCasoUso)
+from ..application.casos_uso import (ObtenerReportesCasoUso,CrearReporteCasoUso,ObtenerEstadisticasCasoUso,GenerarReporteCasoUso,ExportarReporteCasoUso)
 
 # Dependencias para repositorios
 def get_reporte_repository():
@@ -15,16 +15,17 @@ def get_generador_datos():
 def get_exportador():
     return ExportadorReporteService()
 
-# Dependencias para casos de uso - TODOS EN SINGULAR
+# Dependencias para casos de uso - CORREGIDO
 def get_crear_reporte_caso_uso(
     repo = Depends(get_reporte_repository)
 ):
     return CrearReporteCasoUso(repo)
 
-def get_obtener_reportes_caso_uso(  # SINGULAR: get_obtener_reportes_caso_uso
+def get_obtener_reportes_caso_uso(
     repo = Depends(get_reporte_repository)
 ):
-    return get_obtener_reportes_caso_uso(repo)
+    # CORRECCIÓN: Crear instancia, no llamarse a sí misma
+    return ObtenerReportesCasoUso(repo)  # ← Instancia del caso de uso
 
 def get_generar_reporte_caso_uso(
     repo = Depends(get_reporte_repository),

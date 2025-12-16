@@ -188,3 +188,11 @@ class ObtenerEstadisticasCasoUso:
     
     async def ejecutar(self) -> Dict[str, Any]:
         return await self.reporte_repo.obtener_estadisticas()
+    
+
+class ObtenerReportesCasoUso:
+    def __init__(self, repositorio):
+        self.repositorio = repositorio
+    
+    def ejecutar(self):
+        return self.repositorio.obtener_todos()
