@@ -109,6 +109,13 @@ CREATE TABLE Auditoria (
     detalles TEXT
 );
 
+
+
+
+
+
+
+
 INSERT INTO categorias (nombre) VALUES
 ('Electrónica'),
 ('Ropa'),
