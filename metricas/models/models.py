@@ -158,3 +158,5 @@ class SerieTemporalCompleta(BaseModel):
     estadisticas: Dict[str, float]
     tendencia: Dict[str, Any]
     prediccion: Optional[List[PuntoGrafico]] = None
+
+
