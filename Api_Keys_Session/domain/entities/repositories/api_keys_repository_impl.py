@@ -1,4 +1,5 @@
-from .....database.Mongodb_Connection import mongo_db
+# from .....database.Mongodb_Connection import mongo_db
+from .....database.Mongodb_Connection import mongo_manager
 from ....domain.entities.api_keys import APIKeyEntity
 from ....domain.entities.repositories.api_keys_repository import APIKeyRepository
 from bson import ObjectId
@@ -8,7 +9,7 @@ from datetime import datetime, timedelta
 class MongoAPIKeyRepository(APIKeyRepository):
 
     def __init__(self):
-        self.collection = mongo_db["api_keys"]
+        self.collection = mongo_manager.db["api_keys"]
 
     async def create(self, api_key: APIKeyEntity) -> APIKeyEntity:
         print(f"[DEBUG] Guardando API Key... user_id={api_key.user_id}")

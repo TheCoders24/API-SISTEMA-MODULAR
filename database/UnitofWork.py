@@ -1,3 +1,27 @@
+# database/UnitofWork.py
+from sqlalchemy.ext.asyncio import AsyncSession
+# Importación corregida:
+from .session import AsyncSession as session_factory
+from .Mongodb_Connection import mongo_manager
+
+class UnitOfWork:
+    def __init__(self):
+        self.session_factory = session_factory
+        self.mongo_manager = mongo_manager
+
+    async def __aenter__(self):
+        self.session: AsyncSession = self.session_factory()
+        # Acceso a Mongo (asegúrate de que mongo_manager tenga .db)
+        self.mongo = self.mongo_manager.db 
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            await self.session.rollback()
+        else:
+            await self.session.commit()
+        await self.session.close()
+
 """
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,6 +91,10 @@ class UnitOfWork:
         await self.session.close()
 """
 
+
+
+
+"""
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -77,7 +105,6 @@ class UnitOfWork:
 
     @asynccontextmanager
     async def transaction(self):
-        """Manejador de transacciones con commit/rollback automático"""
         if self._transaction is not None:
             raise RuntimeError("Transaction already in progress")
         
@@ -92,7 +119,7 @@ class UnitOfWork:
             self._transaction = None
 
     async def rollback(self):
-        """Método para rollback manual si es necesario"""
         if self._transaction is not None:
             await self._transaction.rollback()
             self._transaction = None
+"""

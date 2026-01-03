@@ -7,3 +7,4 @@ pydantic==2.8.0
 - pip install passlib
 - python -m pip install "pymongo[srv]"
 - pip install bcrypt
+- pip install asyncpg psycopg2-binary

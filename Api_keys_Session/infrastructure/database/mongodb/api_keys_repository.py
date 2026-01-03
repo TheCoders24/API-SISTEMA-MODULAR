@@ -5,7 +5,7 @@ import hashlib
 import secrets
 from ....domain.entities.api_keys import APIKeyEntity
 from ....domain.entities.repositories.api_keys_repository import APIKeyRepository
-from .....database.Mongodb_Connection import mongo_db
+from .....database.Mongodb_Connection import mongo_manager
 
 
 class MongoDBAPIKeyRepository(APIKeyRepository):
@@ -13,7 +13,7 @@ class MongoDBAPIKeyRepository(APIKeyRepository):
     
     def __init__(self):
         print("[DEBUG][INIT] Conectando a la colección 'api_keys'")
-        self.collection = mongo_db["api_keys"]
+        self.collection = mongo_manager.db["api_keys"]
     
     def _to_entity(self, data: dict) -> Optional[APIKeyEntity]:
         print(f"[DEBUG][_to_entity] Raw Mongo data: {data}")

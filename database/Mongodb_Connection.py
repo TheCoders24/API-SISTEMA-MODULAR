@@ -1,31 +1,45 @@
-import asyncio
+import logging
 from motor.motor_asyncio import AsyncIOMotorClient
+# from beanie import init_beanie # Opcional pero recomendado para esquemas
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+logger = logging.getLogger(__name__)
 
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-MONGO_DB = os.getenv("MONGO_DB", "sessionDB")
+class MongoDBManager:
+    def __init__(self):
+        self.client: AsyncIOMotorClient = None
+        self.db = None
+        self.url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+        self.db_name = os.getenv("MONGO_DB", "sessionDB")
 
-client = AsyncIOMotorClient(MONGO_URL)
-mongo_db = client[MONGO_DB]
+    async def connect(self):
+        """Inicializa la conexión con parámetros de optimización."""
+        try:
+            # Configuración avanzada: Pool de conexiones y timeouts
+            self.client = AsyncIOMotorClient(
+                self.url,
+                maxPoolSize=50,       # Límite de conexiones para evitar saturar RAM
+                minPoolSize=10,       # Mantener conexiones calientes
+                serverSelectionTimeoutMS=5000
+            )
+            self.db = self.client[self.db_name]
+            
+            # Verificar con un ping
+            await self.client.admin.command("ping")
+            logger.info("✅ Conexión a MongoDB establecida")
+        except Exception as e:
+            logger.error(f"❌ Error conectando a MongoDB: {e}")
+            raise
 
-# Para verificar conexión (async):
-async def check_mongo_connection():
-    try:
-        await client.admin.command("ping")
-        print("Conexion a MongoDB establecida para API Keys (async)")
-        return True
-    except Exception as e:
-        print(f"Error en conexion async a MongoDB: {e}")
-        return False
+    async def close(self):
+        """Cierra el cliente al apagar la aplicación."""
+        if self.client:
+            self.client.close()
+            logger.info("🔌 Conexión a MongoDB cerrada")
 
+# Instancia única (Singleton) para ser usada en toda la app
+mongo_manager = MongoDBManager()
 
-# Ejecutamos las prueba de conexion y la mostramos por consola
-if( __name__ == "main"):
-    connected = asyncio.run(check_mongo_connection())
-    if not connected:
-        print("Conexion Fallida")
-    else:
-        print("Conexion establecida correctamente")
+# Dependencia para FastAPI
+async def get_mongo_db():
+    return mongo_manager.db
