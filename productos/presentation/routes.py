@@ -35,20 +35,33 @@ async def get_product_service(db: AsyncSession = Depends(get_db)):
     return ProductService(repository)
 
 @router.get("/", response_model=list[schemas.Producto])
-async def listar_productos(service: ProductService = Depends(get_product_service)):
-    productos = await service.get_all_products()
-    return productos
+async def listar_productos(
+    service: ProductService = Depends(get_product_service)):
+    
+    try:
+        productos = await service.get_all_products()
+        return productos
+    except Exception as e:
+        logger.error(f"Error al listar productos: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al listar productos: {e}"
+        )
+
 
 @router.post("/CrearProductos", response_model=schemas.Producto, status_code=status.HTTP_201_CREATED)
-async def crear_producto(
-    producto: schemas.ProductoCreate,
-    service: ProductService = Depends(get_product_service),
-    db: AsyncSession = Depends(get_db)
-):
-    uow = UnitOfWork(db)
+async def crear_producto(producto: schemas.ProductoCreate):
     try:
-        async with uow.transaction():
+        # Abrimos UnitOfWork
+        async with UnitOfWork() as uow:
+            # Creamos repositorio y servicio usando la sesión de UnitOfWork
+            repository = ProductRepository(uow.session)
+            service = ProductService(repository)
+
+            # Ahora sí se registrará el producto en la misma sesión
             new_product = await service.create_product(producto)
+            
+            # Commit se hace automáticamente al salir del async with
             return fila_a_diccionario(new_product)
     except Exception as e:
         logger.error(f"Error al crear producto: {e}")

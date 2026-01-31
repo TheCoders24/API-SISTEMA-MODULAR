@@ -1,26 +1,42 @@
-# database/UnitofWork.py
+# database/UnitOfWork.py
 from sqlalchemy.ext.asyncio import AsyncSession
-# Importación corregida:
-from .session import AsyncSession as session_factory
+from .session import async_session
 from .Mongodb_Connection import mongo_manager
 
 class UnitOfWork:
+    """
+    Unidad de trabajo para manejar transacciones SQL y acceso a MongoDB.
+    Uso recomendado:
+        async with UnitOfWork() as uow:
+            # usar uow.session y uow.mongo
+    """
+
     def __init__(self):
-        self.session_factory = session_factory
-        self.mongo_manager = mongo_manager
+        self.session: AsyncSession | None = None
+        self.mongo = None
 
     async def __aenter__(self):
-        self.session: AsyncSession = self.session_factory()
-        # Acceso a Mongo (asegúrate de que mongo_manager tenga .db)
-        self.mongo = self.mongo_manager.db 
+        # Crear sesión SQL usando el async_sessionmaker vinculado al engine
+        self.session = async_session()
+        # Conectar a Mongo
+        self.mongo = mongo_manager.db
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if exc_type:
-            await self.session.rollback()
-        else:
-            await self.session.commit()
-        await self.session.close()
+        if self.session:
+            try:
+                if exc_type:
+                    await self.session.rollback()
+                else:
+                    await self.session.commit()
+            finally:
+                await self.session.close()
+
+    # Opcional: helper para usar transaction
+    async def transaction(self):
+        async with self as uow:
+            yield uow
+
 
 """
 from contextlib import asynccontextmanager
