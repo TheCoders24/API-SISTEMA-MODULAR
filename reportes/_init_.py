@@ -27,3 +27,8 @@ Modelos de datos (opcional)
 """
 Capa de presentación - Endpoints FastAPI
 """
+
+
+from .presentation.routes import routes_reportes_metricas
+
+__all__ = ["router"]

@@ -16,13 +16,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from .categoria.presentation.routes.categoria_router import categoria_router
 from .proveedores.presentation.routes.proveedores_router import proveedores_router
 # ruta laptop 
-from .Api_Keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase, ValidateAPIKeyUseCase
+#from .Api_Keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase, ValidateAPIKeyUseCase
 # ruta desktop
-#from .Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase, ValidateAPIKeyUseCase
+from .Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase, ValidateAPIKeyUseCase
 # ruta laptop
-from .Api_Keys_Session.presentation.routes.api_keys_router import api_key_router
+#from .Api_Keys_Session.presentation.routes.api_keys_router import api_key_router
 # ruta desktop
-#from .Api_keys_Session.presentation.routes.api_keys_router import api_key_router
+from .Api_keys_Session.presentation.routes.api_keys_router import api_key_router
 from .webSocket.presentation.websocket.routes import websocket
 from .monitoring.monitoreodb.endpoint import router as monitoreo_router
 from .monitoring.monitoreodb.manager import stats_background_task
@@ -31,8 +31,11 @@ from logging.config import dictConfig
 import uvicorn
 from .v2.message_routes import router_v2_
 from .Ventas import router as ventas_router
-from .reportes.presentation.routes import router as reportes_router
-from .metricas.presentation.routes import router as metricas_router
+
+from .reportes.presentation.routes.routes_reportes_metricas import router
+
+
+#from .metricas.presentation.routes import router as metricas_router
 
 # Configuración avanzada de logging
 LOG_CONFIG = {
@@ -68,6 +71,7 @@ LOG_CONFIG = {
     },
 }
 
+
 # Aplicar configuración de logging 
 #dictConfig(LOG_CONFIG)
 app = FastAPI(title="API Inventario v1")
@@ -75,11 +79,11 @@ app = FastAPI(title="API Inventario v2")
 
 #incluimos la version de la api/v2 en pruebas
 # app.include_router(router_v2_ ,prefix="/api/v2")
-
 # incluimos el router de monitoreo con su routers o prefijo
 # app.include_router(monitoreo_router, prefix="/monitoreo", tags=["monitoreo"])
-app.include_router(metricas_router)
-app.include_router(reportes_router)
+#app.include_router(metricas_router)
+#app.include_router(routes_reportes_metricas)
+
 app.include_router(api_key_router)
 # Incluye los routers de cada módulo
 app.include_router(ventas_router)
@@ -89,6 +93,15 @@ app.include_router(productos_router)
 app.include_router(login_router)
 app.include_router(categoria_router)
 app.include_router(proveedores_router)
+
+
+app.include_router(
+    router,  # <-- Usa 'router' no 'routes'
+    prefix="/api/metricas",
+    tags=["📊 Métricas y Alertas"]
+)
+
+
 
 # Configuración de CORS
 app.add_middleware(
