@@ -15,12 +15,16 @@ from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from .categoria.presentation.routes.categoria_router import categoria_router
 from .proveedores.presentation.routes.proveedores_router import proveedores_router
+
 # ruta laptop 
 #from .Api_Keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase, ValidateAPIKeyUseCase
+
 # ruta desktop
 from .Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase, ValidateAPIKeyUseCase
+
 # ruta laptop
 #from .Api_Keys_Session.presentation.routes.api_keys_router import api_key_router
+
 # ruta desktop
 from .Api_keys_Session.presentation.routes.api_keys_router import api_key_router
 from .webSocket.presentation.websocket.routes import websocket
@@ -73,7 +77,7 @@ LOG_CONFIG = {
 
 
 # Aplicar configuración de logging 
-#dictConfig(LOG_CONFIG)
+dictConfig(LOG_CONFIG)
 app = FastAPI(title="API Inventario v1")
 app = FastAPI(title="API Inventario v2")
 
@@ -83,25 +87,21 @@ app = FastAPI(title="API Inventario v2")
 # app.include_router(monitoreo_router, prefix="/monitoreo", tags=["monitoreo"])
 #app.include_router(metricas_router)
 #app.include_router(routes_reportes_metricas)
-
-app.include_router(api_key_router)
+#app.include_router(api_key_router)
 # Incluye los routers de cada módulo
-app.include_router(ventas_router)
 # app.include_router(websocket_router)
 # app.include_router(websocket)
+
+app.include_router(ventas_router)
 app.include_router(productos_router)
 app.include_router(login_router)
 app.include_router(categoria_router)
 app.include_router(proveedores_router)
-
-
 app.include_router(
     router,  # <-- Usa 'router' no 'routes'
     prefix="/api/metricas",
     tags=["📊 Métricas y Alertas"]
 )
-
-
 
 # Configuración de CORS
 app.add_middleware(
