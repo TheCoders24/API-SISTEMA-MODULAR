@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        
+        # 🔥 **ESTA ES LA LÍNEA QUE FALTA - SOLUCIÓN DEFINITIVA**
+        extra = "ignore"  # ← ¡SOLO ESTO!
+        
         @classmethod
         def customise_sources(cls, init_settings, env_settings, file_secret_settings):
             def parse_env_settings(settings):
@@ -47,4 +51,5 @@ class Settings(BaseSettings):
                     settings['CORS_ORIGINS'] = json.loads(settings['CORS_ORIGINS'])
                 return settings
             return (init_settings, parse_env_settings, file_secret_settings)
+
 settings = Settings()

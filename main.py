@@ -1,128 +1,189 @@
-from fastapi import FastAPI, Request
-from fastapi import Depends, HTTPException, status
-from .productos.presentation.routes import router as productos_router
-from .Login.routes import router as login_router
-from sqlalchemy.ext.asyncio import AsyncEngine
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from .database.base import Base
-from .database.session import engine
-# from .Api_Keys_Session.models.api_key_models import create_key, validate_key
-# from .Api_Keys_Session.schemas.api_keys_schemas import APIkeyCreate, APIkeyResponse, APIkeyInfo
-from fastapi.security import APIKeyHeader
-from .database.session import DATABASE_URL
-from .database.session import get_db
-from sqlalchemy.orm import Session
+import asyncio
+import sys
+import os
+from pathlib import Path
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+from logging.config import dictConfig
+
+# =======================================================
+# CONFIGURACIÓN DE PATH
+# =======================================================
+ROOT_DIR = Path(__file__).parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+os.environ["PYTHONPATH"] = str(ROOT_DIR)
+
+# =======================================================
+# IMPORTS LOCALES
+# =======================================================
+from .database.base import Base
+from .Login.routes import router as login_router
 from .categoria.presentation.routes.categoria_router import categoria_router
 from .proveedores.presentation.routes.proveedores_router import proveedores_router
-
-# ruta laptop 
-#from .Api_Keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase, ValidateAPIKeyUseCase
-
-# ruta desktop
-from .Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase, ValidateAPIKeyUseCase
-
-# ruta laptop
-#from .Api_Keys_Session.presentation.routes.api_keys_router import api_key_router
-
-# ruta desktop
-from .Api_keys_Session.presentation.routes.api_keys_router import api_key_router
-from .webSocket.presentation.websocket.routes import websocket
-from .monitoring.monitoreodb.endpoint import router as monitoreo_router
-from .monitoring.monitoreodb.manager import stats_background_task
-import logging
-from logging.config import dictConfig
-import uvicorn
-from .v2.message_routes import router_v2_
+from .productos.presentation.routes import router as productos_router
 from .Ventas import router as ventas_router
+from .reportes.presentation.routes.routes_reportes_metricas import router as metricas_router
 
-from .reportes.presentation.routes.routes_reportes_metricas import router
+# =======================================================
+# API KEYS
+# =======================================================
+try:
+    from .Api_keys_Session.presentation.routes.api_keys_router import api_key_router
+    print("✅ API Keys module imported successfully")
+except ImportError as e:
+    print(f"⚠️ API Keys module not available: {e}")
+    api_key_router = None
 
+# =======================================================
+# OBSERVABILITY IMPORTS (🔥 CORREGIDO)
+# =======================================================
+OBSERVABILITY_AVAILABLE = False
 
-#from .metricas.presentation.routes import router as metricas_router
+try:
+    from observability_logs.infrastructure.mongodb.connection import mongodb_connection
+    from observability_logs.infrastructure.mongodb.repository import MongoDBLogRepository
+    from observability_logs.infrastructure.middleware import ObservabilityMiddleware
+    from observability_logs.infrastructure.websocket import WebSocketPublisher
+    from observability_logs.application.service import ObservabilityLogService
+    from observability_logs.application.alerts import SecurityAlertService   # ✅ IMPORT REAL
+    from observability_logs.presentation import logs_router, ws_router
+    from observability_logs.config import ObservabilityConfig
 
-# Configuración avanzada de logging
+    OBSERVABILITY_AVAILABLE = True
+    print("✅ Observability module imported successfully")
+
+except ImportError as e:
+    print(f"⚠️ Observability module not available: {e}")
+
+# =======================================================
+# LOGGING
+# =======================================================
 LOG_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,
-    "formatters": {
-        "default": {
-            "()": "uvicorn.logging.DefaultFormatter",
-            "fmt": "%(asctime)s [%(levelname)s] %(message)s",
-            "use_colors": True,
-        },
-        "access": {
-            "()": "uvicorn.logging.AccessFormatter",
-            "fmt": '%(asctime)s [%(levelname)s] %(client_addr)s - "%(request_line)s" %(status_code)s',
-        },
-    },
     "handlers": {
         "default": {
-            "formatter": "default",
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stderr",
-        },
-        "access": {
-            "formatter": "access",
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stdout",
-        },
+        }
     },
     "loggers": {
-        "uvicorn": {"handlers": ["default"], "level": "INFO", "propagate": False},
+        "uvicorn": {"handlers": ["default"], "level": "INFO"},
         "uvicorn.error": {"level": "INFO"},
-        "uvicorn.access": {"handlers": ["access"], "level": "INFO", "propagate": False},
     },
 }
 
-
-# Aplicar configuración de logging 
 dictConfig(LOG_CONFIG)
-app = FastAPI(title="API Inventario v1")
-app = FastAPI(title="API Inventario v2")
 
-#incluimos la version de la api/v2 en pruebas
-# app.include_router(router_v2_ ,prefix="/api/v2")
-# incluimos el router de monitoreo con su routers o prefijo
-# app.include_router(monitoreo_router, prefix="/monitoreo", tags=["monitoreo"])
-#app.include_router(metricas_router)
-#app.include_router(routes_reportes_metricas)
-#app.include_router(api_key_router)
-# Incluye los routers de cada módulo
-# app.include_router(websocket_router)
-# app.include_router(websocket)
-
-app.include_router(ventas_router)
-app.include_router(productos_router)
-app.include_router(login_router)
-app.include_router(categoria_router)
-app.include_router(proveedores_router)
-app.include_router(
-    router,  # <-- Usa 'router' no 'routes'
-    prefix="/api/metricas",
-    tags=["📊 Métricas y Alertas"]
+# =======================================================
+# APP
+# =======================================================
+app = FastAPI(
+    title="API Inventario - Sistema Modular",
+    version="2.0.0"
 )
 
-# Configuración de CORS
+# =======================================================
+# OBSERVABILITY SETUP (🔥 CORREGIDO)
+# =======================================================
+if OBSERVABILITY_AVAILABLE:
+    try:
+        config = ObservabilityConfig()
+
+        mongodb_connection.initialize(config)
+
+        log_repository = MongoDBLogRepository()
+        log_service = ObservabilityLogService(log_repository)
+
+        ws_publisher = WebSocketPublisher() if config.ws_enabled else None
+        alert_service = SecurityAlertService(log_repository)
+
+        app.add_middleware(
+            ObservabilityMiddleware,
+            log_service=log_service,
+            ws_publisher=ws_publisher
+        )
+
+        @app.on_event("startup")
+        async def start_alert_worker():
+            if config.alerts_enabled:
+                asyncio.create_task(
+                    alert_worker(alert_service, config.alert_check_interval)
+                )
+
+        @app.on_event("shutdown")
+        async def shutdown_mongo():
+            mongodb_connection.close()
+
+        app.include_router(logs_router, prefix="/observability/logs")
+        app.include_router(ws_router, prefix="/observability/ws")
+
+        print("✅ Observability initialized correctly")
+
+    except Exception as e:
+        OBSERVABILITY_AVAILABLE = False
+        print(f"❌ Error initializing observability: {e}")
+
+# =======================================================
+# CORS
+# =======================================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://192.168.193.1:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# =======================================================
+# ROUTERS
+# =======================================================
+app.include_router(login_router)
+app.include_router(productos_router)
+app.include_router(categoria_router)
+app.include_router(proveedores_router)
+app.include_router(ventas_router)
+app.include_router(metricas_router, prefix="/api/metricas")
+if api_key_router:
+    app.include_router(api_key_router)
+
+# =======================================================
+# HEALTH
+# =======================================================
 @app.get("/")
 async def root():
-    return {"message": "Sistema de Inventario con PostgreSQL"}
+    return {
+        "status": "operational",
+        "observability": OBSERVABILITY_AVAILABLE,
+        "mongodb": (
+            "connected"
+            if OBSERVABILITY_AVAILABLE and mongodb_connection and mongodb_connection.is_connected()
+            else "disconnected"
+        ),
+        "api_keys": bool(api_key_router)
+    }
 
-# Si ejecutas este archivo directamente
+# =======================================================
+# ALERT WORKER
+# =======================================================
+async def alert_worker(alert_service, interval: int):
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            alert_service.analyze_and_alert()
+        except Exception as e:
+            print(f"❌ Alert worker error: {e}")
+
+# =======================================================
+# ENTRY POINT
+# =======================================================
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,
-        log_level="info",
-        access_log=True
+        reload=True
     )
