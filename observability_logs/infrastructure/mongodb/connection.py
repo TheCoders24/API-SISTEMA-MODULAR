@@ -12,6 +12,7 @@ class MongoDBConnection:
     _instance: Optional["MongoDBConnection"] = None
     _client: Optional[MongoClient] = None
     _db: Optional[Database] = None
+    _config: Optional[ObservabilityConfig] = None # 👈 Guardamos la config
 
     def __new__(cls):
         if cls._instance is None:
@@ -20,6 +21,7 @@ class MongoDBConnection:
 
     def initialize(self, config: ObservabilityConfig):
         """Inicializa la conexión a MongoDB"""
+        self._config = config # 👈 Guardar referencia
         if self._client is None:
             self._client = MongoClient(config.mongodb_uri)
             self._db = self._client[config.mongodb_database]
@@ -69,19 +71,31 @@ class MongoDBConnection:
 
     @property
     def logs(self) -> Collection:
+        # ✅ Ahora usa el nombre correcto desde la config
         return self.db[self._get_collection_name()]
 
     def _get_collection_name(self) -> str:
-        return self._db.name and self._db.get_collection_names() and self._db.name
+        # ✅ Simplificado: Retorna el nombre configurado o uno por defecto
+        if self._config:
+            return self._config.mongodb_collection
+        return "observability_logs"
 
     def is_connected(self) -> bool:
-        return self._client is not None and self._db is not None
+        try:
+            # Forma recomendada de verificar conexión real en PyMongo
+            if self._client:
+                self._client.admin.command('ping')
+                return True
+            return False
+        except Exception:
+            return False
 
     def close(self):
         if self._client:
             self._client.close()
             self._client = None
             self._db = None
+            self._config = None
 
 
 # Singleton

@@ -3,16 +3,18 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from typing import Dict, Optional
 import time
-from application.context import LogContext
-from application.factory import LogFactory
-from domain.enums import LogLevel, LogCategory
-from domain.value_objects import generate_trace_id
+
+# ✅ CORRECCIÓN DE IMPORTS (Añadidos .. para indicar carpetas superiores)
+from ..application.context import LogContext
+from ..application.factory import LogFactory
+from ..domain.enums import LogLevel, LogCategory
+from ..domain.value_objects import generate_trace_id
 
 
 class ObservabilityMiddleware(BaseHTTPMiddleware):
     """
     Middleware global que inyecta trazabilidad en TODA la aplicación
-    Versión CORREGIDA con tipos correctos
+    Versión CORREGIDA con tipos correctos y rutas de importación relativas
     """
     
     def __init__(

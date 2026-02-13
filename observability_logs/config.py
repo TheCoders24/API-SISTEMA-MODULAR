@@ -1,6 +1,6 @@
 # observability_logs/config.py
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class ObservabilityConfig(BaseSettings):
     """Configuración - SOLO MongoDB"""
@@ -23,9 +23,10 @@ class ObservabilityConfig(BaseSettings):
     alerts_enabled: bool = Field(True, validation_alias="OBS_ALERTS_ENABLED")
     alert_check_interval: int = Field(60, validation_alias="OBS_ALERT_CHECK_INTERVAL")
 
-    # 🔥 SOLUCIÓN: Forzar extra='ignore' AQUÍ y asegurar herencia correcta
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "case_sensitive": False
-    }
+    # 🔥 SOLUCIÓN: Añadir "extra": "ignore" para que no explote con variables de otras DBs
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore"  # 👈 Crucial: ignora DATABASE_URL, SECRET_KEY, etc.
+    )

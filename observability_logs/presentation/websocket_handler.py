@@ -2,7 +2,9 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from typing import Optional
 import asyncio
 from datetime import datetime
-from infrastructure.websocket import WebSocketPublisher, SubscriptionType
+# from infrastructure.websocket import WebSocketPublisher, SubscriptionType
+from ..infrastructure.websocket import WebSocketPublisher, SubscriptionType
+
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
 publisher = WebSocketPublisher()

@@ -1,10 +1,10 @@
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-from infrastructure.mongodb.repository import MongoDBLogRepository
-#from ..infrastructure.mongodb.repository import MongoDBLogRepository
 
+# ✅ CORRECCIÓN: Uso de importación relativa para evitar el ModuleNotFoundError
+from ..infrastructure.mongodb.repository import MongoDBLogRepository
 
-class MongoLogQueryService:
+class LogQueryService:
     """Servicio de consultas avanzadas OPTIMIZADO para MongoDB"""
     
     def __init__(self, repository: MongoDBLogRepository):
@@ -12,6 +12,7 @@ class MongoLogQueryService:
     
     def get_user_timeline(self, user_id: str, days: int = 7) -> Dict[str, Any]:
         """Timeline completo de usuario con agregaciones"""
+        # Nota: En versiones modernas de Python se recomienda datetime.now(timezone.utc)
         since = datetime.utcnow() - timedelta(days=days)
         
         pipeline = [
