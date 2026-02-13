@@ -1,4 +1,5 @@
 from fastapi import Request
+import jwt
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from typing import Dict, Optional
@@ -41,6 +42,12 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         context = LogContext(request=request)
         context.trace_id = trace_id
         
+        #  logica para Extraer User ID del  Token
+        user_info = self._get_user_info(request)
+        if user_info:
+            context.user_id = user_info.get("user_id")
+            context.user_role = user_info.get("role")
+
         # 4. Guardar en request.state
         request.state.log_context = context
         request.state.trace_id = trace_id
@@ -125,3 +132,21 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         if not trace_id:
             trace_id = generate_trace_id()
         return trace_id
+    
+    def _get_user_info(self, request: Request) -> dict:
+        """Extrae informacion del usuario sin bloquear la peticion"""
+        try:
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header.split(" ")[1]
+                # Aquí se debería implementar la lógica para decodificar el token
+                # y extraer la información del usuario (user_id, roles, etc.)
+                # Esto es solo un ejemplo simplificado
+                payload = jwt.decode(token, options={"verify_signature": False})
+            return {
+                "user_id": payload.get("sub") or payload.get("id"),
+                "role": payload.get("role")
+            }
+        except Exception:
+         pass # Si el token es inválido, simplemente devolvemos null
+        return None
