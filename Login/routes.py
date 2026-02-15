@@ -1,37 +1,32 @@
 # login/routes.py
 
 from fastapi import APIRouter, Depends, HTTPException, status, Body, Response
-from fastapi.security import OAuth2PasswordRequestForm
-from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 import sqlalchemy as sa
 from datetime import timedelta
 from typing import Annotated
 import logging
+
 from ..database.session import get_db
-from ..Api_keys_Session.domain.entities.repositories.api_keys_repository_impl import MongoAPIKeyRepository
 
-# importacion laptop
-#from ..Api_Keys_Session.domain.entities.repositories.api_keys_repository_impl import MongoAPIKeyRepository
+from ..Api_keys_Session.domain.entities.repositories.api_keys_repository_impl import (
+    MongoAPIKeyRepository
+)
+from ..Api_keys_Session.application.service.api_keys_service import (
+    CreateAPIKeyUseCase
+)
+from ..Api_keys_Session.presentation.schemas.api_keys_schemas import (
+    APIKeyCreate
+)
 
-from ..Api_keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase 
-
-# importacion laptop
-#from ..Api_Keys_Session.application.service.api_keys_service import CreateAPIKeyUseCase
-
-from  ..Api_keys_Session.presentation.schemas.api_keys_schemas  import APIKeyCreate 
-
-#importacion laptop
-#from ..Api_Keys_Session.presentation.schemas.api_keys_schemas  import APIKeyCreate
 from .auth import (
-    ALGORITHM,
-    SECRET_KEY,
     get_current_active_user,
     create_access_token,
     authenticate_user,
     get_password_hash,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
+    get_token_expiration_minutes,
 )
+
 from .schemas import (
     UsuarioResponseWithAPIKey,
     UsuarioCreate,
@@ -50,16 +45,15 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # ==============================================================
 
 async def get_user_by_email(db: AsyncSession, email: str):
-    """Obtiene un usuario por email con todos los campos necesarios"""
     result = await db.execute(
         sa.text("""
             SELECT id, nombre, email, password, is_active
             FROM usuarios
             WHERE email = :email
         """),
-        {"email": email}
+        {"email": email.lower().strip()}
     )
-    return result.fetchone()
+    return result.mappings().first()
 
 
 # ==============================================================
@@ -68,7 +62,7 @@ async def get_user_by_email(db: AsyncSession, email: str):
 
 @router.post(
     "/register",
-    response_model=Token,  # 👈 devolvemos el token en lugar del usuario directo
+    response_model=Token,
     status_code=status.HTTP_201_CREATED
 )
 async def register_user(
@@ -76,13 +70,18 @@ async def register_user(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        # 1️⃣ Verificar si ya existe
+        # 1️⃣ Verificar existencia
         existing_user = await get_user_by_email(db, user_data.email)
         if existing_user:
-            raise HTTPException(status_code=400, detail="El email ya está registrado")
+            raise HTTPException(
+                status_code=400,
+                detail="El email ya está registrado"
+            )
 
-        # 2️⃣ Hashear contraseña
-        hashed_password = get_password_hash(user_data.password.get_secret_value())
+        # 2️⃣ Hash de contraseña
+        hashed_password = get_password_hash(
+            user_data.password.get_secret_value()
+        )
 
         # 3️⃣ Crear usuario
         result = await db.execute(
@@ -92,53 +91,64 @@ async def register_user(
                 RETURNING id, nombre, email, is_active
             """),
             {
-                "nombre": user_data.nombre,
-                "email": user_data.email,
+                "nombre": user_data.nombre.strip(),
+                "email": user_data.email.lower().strip(),
                 "password": hashed_password
             }
         )
-        new_user = result.fetchone()
-        if new_user is None:
-            raise HTTPException(status_code=500, detail="No se pudo crear el usuario")
+        new_user = result.mappings().first()
+        if not new_user:
+            raise HTTPException(
+                status_code=500,
+                detail="No se pudo crear el usuario"
+            )
+
         await db.commit()
 
         # 4️⃣ Crear API Key
         api_key_repository = MongoAPIKeyRepository()
         use_case = CreateAPIKeyUseCase(api_key_repository)
-        api_key_response = await use_case.execute(user_id=str(new_user.id))
+        api_key_response = await use_case.execute(
+            user_id=str(new_user["id"])
+        )
 
-        # 5️⃣ Crear token JWT
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        # 5️⃣ Crear JWT
         access_token = create_access_token(
             data={
-                "sub": str(new_user.id),
-                "email": new_user.email,
-                "nombre": new_user.nombre.strip(),
+                "sub": str(new_user["id"]),
+                "email": new_user["email"],
+                "nombre": new_user["nombre"],
                 "is_active": True
             },
-            expires_delta=access_token_expires
+            expires_delta=timedelta(
+                minutes=get_token_expiration_minutes()
+            )
         )
-        print("Creacion del Token JWT",access_token)
 
-        # 6️⃣ Devolver respuesta esperada
+        # 6️⃣ Respuesta final
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "user": {
-                "id": new_user.id,
-                "nombre": new_user.nombre,
-                "email": new_user.email,
+                "id": new_user["id"],
+                "nombre": new_user["nombre"],
+                "email": new_user["email"],
                 "api_key": api_key_response["raw_key"]
             }
         }
 
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception:
         logger.exception("Error al registrar usuario")
-        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Error interno al registrar usuario"
+        )
 
 
 # ==============================================================
-# LOGIN DE USUARIO
+# LOGIN
 # ==============================================================
 
 @router.post("/login", response_model=Token)
@@ -147,7 +157,12 @@ async def login_for_access_token(
     form_data: UsuarioLogin = Body(...),
     db: AsyncSession = Depends(get_db)
 ):
-    user = await authenticate_user(db, form_data.email, form_data.password.get_secret_value())
+    user = await authenticate_user(
+        db,
+        form_data.email,
+        form_data.password.get_secret_value()
+    )
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -155,30 +170,23 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if "id" not in user or "nombre" not in user or "is_active" not in user:
+    if not user.get("is_active", True):
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Datos de usuario incompletos"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuario inactivo"
         )
 
-    # Crear token JWT
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    # access_token = create_access_token(user, expires_delta=access_token_expires)
     access_token = create_access_token(
         data={
             "sub": str(user["id"]),
             "email": user["email"],
-            "nombre": user["nombre"].strip(),
+            "nombre": user["nombre"],
             "is_active": user["is_active"]
         },
-        expires_delta=access_token_expires
+        expires_delta=timedelta(
+            minutes=get_token_expiration_minutes()
+        )
     )
-    # Debug del token
-    try:
-        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
-        logger.info(f"Token generado correctamente: {payload}")
-    except JWTError as e:
-        logger.error(f"Error al decodificar token: {str(e)}")
 
     # Cookie segura (opcional)
     response.set_cookie(
@@ -187,21 +195,23 @@ async def login_for_access_token(
         httponly=True,
         secure=True,
         samesite="strict",
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        max_age=get_token_expiration_minutes() * 60
     )
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 
 # ==============================================================
-# OBTENER USUARIO ACTUAL
+# USUARIO ACTUAL
 # ==============================================================
 
 @router.get("/users", response_model=UsuarioResponse)
 async def read_current_user(
     current_user: dict = Depends(get_current_active_user)
 ):
-    logger.debug(f"Usuario autenticado actual: {current_user}")
     return {
         "id": current_user["id"],
         "nombre": current_user["nombre"],
@@ -223,42 +233,57 @@ async def update_current_user(
     update_data = user_data.model_dump(exclude_unset=True)
 
     if "password" in update_data:
-        update_data["password"] = get_password_hash(update_data["password"].get_secret_value())
+        update_data["password"] = get_password_hash(
+            update_data["password"].get_secret_value()
+        )
 
     if not update_data:
-        raise HTTPException(status_code=400, detail="No se proporcionaron datos para actualizar")
+        raise HTTPException(
+            status_code=400,
+            detail="No se proporcionaron datos para actualizar"
+        )
 
-    set_clause = ", ".join([f"{key} = :{key}" for key in update_data.keys()])
+    set_clause = ", ".join(
+        f"{key} = :{key}" for key in update_data.keys()
+    )
 
     result = await db.execute(
-        f"""
-        UPDATE usuarios
-        SET {set_clause}
-        WHERE id = :user_id
-        RETURNING id, nombre, email
-        """,
+        sa.text(f"""
+            UPDATE usuarios
+            SET {set_clause}
+            WHERE id = :user_id
+            RETURNING id, nombre, email, is_active
+        """),
         {"user_id": current_user["id"], **update_data}
     )
-    updated_user = result.fetchone()
+    updated_user = result.mappings().first()
     await db.commit()
 
     if not updated_user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise HTTPException(
+            status_code=404,
+            detail="Usuario no encontrado"
+        )
 
-    return dict(updated_user._mapping)
+    return {
+        "id": updated_user["id"],
+        "nombre": updated_user["nombre"],
+        "email": updated_user["email"],
+        "activo": updated_user["is_active"]
+    }
 
 
 # ==============================================================
-# OBTENER USUARIO AUTENTICADO (ALIAS)
+# ALIAS USUARIO ACTUAL
 # ==============================================================
 
 @router.get("/current_user", response_model=UsuarioResponse)
 async def read_current_user_alias(
     current_user: Annotated[dict, Depends(get_current_active_user)]
 ):
-    return UsuarioResponse(
-        id=current_user["id"],
-        nombre=current_user["nombre"],
-        email=current_user["sub"],
-        activo=current_user["activo"],
-    )
+    return {
+        "id": current_user["id"],
+        "nombre": current_user["nombre"],
+        "email": current_user["email"],
+        "activo": current_user["activo"]
+    }
